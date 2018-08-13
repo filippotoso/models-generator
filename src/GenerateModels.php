@@ -123,40 +123,19 @@ class GenerateModels extends Command
         $this->foreignKeys = [];
         $this->primaryKeys = [];
         $this->relationships = [];
-        $this->manyToMany = [];
 
         foreach ($this->tables as $table) {
             $this->columns[$table] = DB::connection($this->connection)->getDoctrineSchemaManager()->listTableColumns($table);
             $this->indexes[$table] = DB::connection($this->connection)->getDoctrineSchemaManager()->listTableIndexes($table);
             $this->foreignKeys[$table] = DB::connection($this->connection)->getDoctrineSchemaManager()->listTableForeignKeys($table);
             $this->primaryKeys[$table] = isset($this->indexes[$table]['primary']) ? head($this->indexes[$table]['primary']->getColumns()) : null;
+            $this->relationships[$table] = [];
         }
 
         $this->buildManyToManyRelationships();
         $this->buildOneToOneRelationships();
         $this->buildPolymorphicRelationships();
         $this->buildRelationships();
-
-    }
-
-    protected function buildPolymorphicRelationships() {
-
-        $polimorphicRelationships = config('models-generator.polymorphic', []);
-
-        foreach ($polimorphicRelationships as $polimorphicTable => $tables) {
-
-            foreach ($tables as $table) {
-
-                $this->relationships[$table][] = [
-                    'type' => 'morphMany',
-                    'name' => camel_case($polimorphicTable),
-                    'class' => $this->getModelName($polimorphicTable),
-                    'relationship' => $this->getPolimorphicRelationshipName($polimorphicTable),
-                ];
-
-            }
-
-        }
 
     }
 
@@ -192,40 +171,6 @@ class GenerateModels extends Command
 
     protected function buildManyToManyRelationships() {
 
-        $manyToMany = config('models-generator.many_to_many', []);
-
-        $this->manyToMany = $manyToMany;
-
-        foreach ($manyToMany as $manyToManyTable => $relationships) {
-
-            foreach ($relationships as $tableName => $pivotName) {
-
-/*
-                $this->relationships[$tableName] = [
-                    'type' => 'belongsToMany',
-                    'timestamps' => $this->getTimestamps($manyToManyTable);
-                    'pivot' => $pivotName,
-                ];
-
-                $this->relationships[$foreignTable][] = [
-                    'type' => 'belongsToMany',
-                    'name' => camel_case($remoteTable . '_' . $localName),
-                    'class' => $this->getModelName($remoteTable),
-                    'table' => $remoteTable,
-                    'foreign_key' => str_singular($remoteTable) . '_id', // TODO: Optimize this!
-                    'local_key' => $localColumn, // TODO: Implement this!
-                ];
-// */
-            }
-
-        }
-
-    }
-
-
-/*
-    protected function buildManyToMany() {
-
         $this->manyToMany = [];
 
         $tables = array_where($this->tables, function($value, $key) {
@@ -236,17 +181,17 @@ class GenerateModels extends Command
 
             $foreignKeys = array_where($this->foreignKeys[$table], function ($foreignKey) use ($table) {
 
-                $foreignTable = $foreignKey->getForeignTableName();
+                $foreignModel = str_singular($foreignKey->getForeignTableName());
 
-                if (ends_with($table, '_' . $foreignTable) || starts_with($table, $foreignTable. '_')) {
+                if (ends_with($table, '_' . $foreignModel) || starts_with($table, $foreignModel. '_')) {
 
                     $localColumn = head($foreignKey->getLocalColumns());
 
                     if (ends_with($localColumn, '_id')) {
 
-                        $potentialRemoteTable = str_plural(substr($localColumn, 0, -3));
+                        $potentialRemoteModel = substr($localColumn, 0, -3);
 
-                        if ($potentialRemoteTable == $foreignTable) {
+                        if ($potentialRemoteModel == $foreignModel) {
 
                             return true;
 
@@ -260,41 +205,61 @@ class GenerateModels extends Command
 
             });
 
+            if (count($foreignKeys) != 2) {
+                continue;
+            }
+
+            $foreignKeys = array_values($foreignKeys);
+
+            $leftForeignKey = $foreignKeys[0];
+            $rightForeignKey = $foreignKeys[1];
+
+            $columns = array_diff(
+                array_keys($this->columns[$table]),
+                [$this->primaryKeys[$table], head($leftForeignKey->getLocalColumns()), head($rightForeignKey->getLocalColumns()), 'created_at', 'updated_at', 'deleted_at']
+            );
+
+            $this->manyToMany[$table][] = [
+                'table' => $leftForeignKey->getForeignTableName(),
+                'timestamps' => $this->getTimestamps($table),
+                'columns' => $columns,
+                'remote_table' => $rightForeignKey->getForeignTableName(),
+                'foreign_key' => head($leftForeignKey->getLocalColumns()),
+                'local_key' => head($rightForeignKey->getLocalColumns()),
+            ];
+
+            $this->manyToMany[$table][] = [
+                'table' => $rightForeignKey->getForeignTableName(),
+                'timestamps' => $this->getTimestamps($table),
+                'columns' => $columns,
+                'remote_table' => $leftForeignKey->getForeignTableName(),
+                'foreign_key' => head($rightForeignKey->getLocalColumns()),
+                'local_key' => head($leftForeignKey->getLocalColumns()),
+            ];
+
         }
 
-    }
+        foreach ($this->manyToMany as $manyToManyTables => $tables) {
 
-// */
-/*
+            foreach ($tables as $table) {
 
-By default, only the model keys will be present on the pivot object. If your pivot table contains extra attributes, you must specify them when defining the relationship:
-
-return $this->belongsToMany('App\Role')->withPivot('column1', 'column2');
-
-If you want your pivot table to have automatically maintained created_at and updated_at timestamps, use the withTimestamps method on the relationship definition:
-
-return $this->belongsToMany('App\Role')->withTimestamps();
-
-Customizing The pivot Attribute Name
-
-return $this->belongsToMany('App\Podcast')
-                ->as('subscription')
-                ->withTimestamps();
-
-                $remoteTable = $this->getMany2ManyTable($table, $foreignTable);
-
-                $this->relationships[$foreignTable][] = [
+                $this->relationships[$table['table']][] = [
                     'type' => 'belongsToMany',
-                    'name' => camel_case($remoteTable . '_' . $localName),
-                    'class' => $this->getModelName($remoteTable),
-                    'table' => $remoteTable,
-                    'foreign_key' => str_singular($remoteTable) . '_id', // TODO: Optimize this!
-                    'local_key' => $localColumn, // TODO: Implement this!
+                    'name' => camel_case($table['remote_table']),
+                    'class' => $this->getModelName($table['remote_table']),
+                    'table' => $manyToManyTables,
+                    'foreign_key' => $table['foreign_key'],
+                    'local_key' => $table['local_key'],
+                    'timestamps' => $table['timestamps'],
+                    'columns' => $table['columns'],
                 ];
-            dump($this->relationships[$foreignTable]);
-                $this->relationships[$table] = isset($this->relationships[$table]) ? $this->relationships[$table] : [];
 
- */
+            }
+
+        }
+
+
+    }
 
     protected function getPolimorphicRelationshipName($table) {
 
@@ -316,6 +281,45 @@ return $this->belongsToMany('App\Podcast')
 
     }
 
+    protected function buildPolymorphicRelationships() {
+
+        $polimorphicRelationships = config('models-generator.polymorphic', []);
+
+        foreach ($polimorphicRelationships as $polimorphicTable => $tables) {
+
+            foreach ($tables as $table) {
+
+                $this->relationships[$table][] = [
+                    'type' => 'morphMany',
+                    'name' => camel_case($polimorphicTable),
+                    'class' => $this->getModelName($polimorphicTable),
+                    'relationship' => $this->getPolimorphicRelationshipName($polimorphicTable),
+                ];
+
+            }
+
+            $columns = $this->columns[$polimorphicTable];
+
+            foreach($columns as $idColumn => $column) {
+
+                $typeColumn = str_replace('able_id', 'able_type', $idColumn);
+
+                if (ends_with($idColumn, 'able_id') && isset($columns[$typeColumn])) {
+
+                    $relationshipName = substr($idColumn, 0, -3);
+
+                    $this->relationships[$polimorphicTable][$relationshipName] = [
+                        'type' => 'morphTo',
+                        'name' => $relationshipName,
+                    ];
+
+                }
+
+            }
+
+        }
+
+    }
 
     /**
      * Build the relationship data
@@ -362,27 +366,6 @@ return $this->belongsToMany('App\Podcast')
                     'foreign_key' => $localColumn,
                     'local_key' => $this->primaryKeys[$table],
                 ];
-
-            }
-
-            // Find polymorphic relationships
-
-            $columns = $this->columns[$table];
-
-            foreach($columns as $columnName => $column) {
-
-                $typeColumn = str_replace('able_id', 'able_type', $columnName);
-
-                if (ends_with($columnName, 'able_id') && isset($columns[$typeColumn])) {
-
-                    $relationshipName = str_replace('_id', '', $columnName);
-
-                    $this->relationships[$table][$relationshipName] = [
-                        'type' => 'morphTo',
-                        'name' => $relationshipName,
-                    ];
-
-                }
 
             }
 
@@ -752,8 +735,16 @@ return $this->belongsToMany('App\Podcast')
         $this->info('Models generation started.');
 
         foreach ($this->tables as $table) {
+
+            // Skip many to many tables
+            if (isset($this->manyToMany[$table])) {
+                continue;
+            }
+
             $this->generateModel($table);
+
             $this->generateUserModel($table);
+
         }
 
         $this->copyBaseModel();
