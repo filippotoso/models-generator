@@ -348,7 +348,6 @@ class GenerateModels extends Command
 
                 $foreignTable = $foreignKey->getForeignTableName();
 
-
                 $name = preg_replace('#_id$#si', '', $localColumn);
 
                 $this->relationships[$table][] = [
@@ -359,9 +358,13 @@ class GenerateModels extends Command
                     'local_key' => $this->primaryKeys[$table],
                 ];
 
+                if ($name != str_singular($table)) {
+                    $name = $table . '_' . $name;
+                }
+
                 $this->relationships[$foreignTable][] = [
                     'type' => 'hasMany',
-                    'name' => camel_case($table),
+                    'name' => camel_case($name),
                     'class' => $this->getModelName($table),
                     'foreign_key' => $localColumn,
                     'local_key' => $this->primaryKeys[$table],

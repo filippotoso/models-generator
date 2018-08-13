@@ -57,6 +57,7 @@ This command executes the following steps:
 - Creates an App\Models namespace.
 - Fills it with the Models from the database.
 - Creates the user editable models in the App namespace.
+- Creates the App\Models\Traits\UserRelationships trait for the User model.
 
 If there are existing models in the App\Models namespace they will not be overwritten by default (see the next example).
 If there are existing models in the App namespace they will never be overwritten.

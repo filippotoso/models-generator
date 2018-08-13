@@ -39,13 +39,13 @@
 @elseif ($relationship['timestamps'] && (count($relationship['columns']) > 0))
         return $this->belongsToMany({{ $relationship['class'] }}::class, '{{ $relationship['table'] }}', '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}')
             ->withTimestamps()
-            ->withPivot('{{ implode("', '", $relationship['columns']) }}');
+            ->withPivot('{!! implode("', '", $relationship['columns']) !!}');
 @elseif ($relationship['timestamps'])
         return $this->belongsToMany({{ $relationship['class'] }}::class, '{{ $relationship['table'] }}', '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}')
             ->withTimestamps();
 @elseif (count($relationship['columns']) > 0)
         return $this->belongsToMany({{ $relationship['class'] }}::class, '{{ $relationship['table'] }}', '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}')
-            ->withPivot('{{ implode("', '", $relationship['columns']) }}');
+            ->withPivot('{!! implode("', '", $relationship['columns']) !!}');
 @endif
     }
 @endif
