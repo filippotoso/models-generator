@@ -83,7 +83,8 @@ To gain the maximum benefits from this package you should follow this workflow:
 - design the database
 - write the migrations (including all the required foreign keys)
 - migrate the database
-- run the Generator
+- configure the generator
+- run the generator
 - customize the models in the App namespace
 
 Then, every time you create and run a new migration, you should execute the generator again to keep the models in sync with the database.
