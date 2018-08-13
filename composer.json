@@ -1,0 +1,28 @@
+{
+    "name": "filippo-toso/models-generator",
+    "description": "A Laravel Artisan command to automatically generate models from database tables",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Filippo Toso",
+            "email": "filippo.toso@creativepark.it"
+        }
+    ],
+    "require": {
+        "php": "^5.6 || ^7.0",
+        "illuminate/support": "^5.4",
+        "doctrine/dbal": "^2.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "FilippoToso\\ModelsGenerator\\": "src"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "FilippoToso\\ModelsGenerator\\ServiceProvider"
+            ]
+        }
+    }
+}
