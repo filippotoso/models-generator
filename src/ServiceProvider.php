@@ -23,8 +23,11 @@ class ServiceProvider extends EventServiceProvider
 
         $this->publishes([
             dirname(__DIR__) . '/config/models-generator.php' => config_path('models-generator.php'),
+        ], 'config');
+
+        $this->publishes([
             dirname(__DIR__) . '/resources/views' => resource_path('views/vendor/models-generator'),
-        ]);
+        ], 'views');
 
         if ($this->app->runningInConsole()) {
             $this->commands([
