@@ -36,6 +36,17 @@ class {{ $class }} extends BaseModel {
     public $incrementing = false;
 
 @endif
+@if (isset($fillable) && is_array($fillable) && !empty($fillable))
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        '{!! implode("', '", $fillable) !!}',
+    ];
+
+@endif
 @if (isset($attributes) && is_array($attributes) && !empty($attributes))
     /**
     * The model's attributes.
