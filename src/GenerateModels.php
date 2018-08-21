@@ -447,10 +447,14 @@ class GenerateModels extends Command
                     continue;
                 }
 
-                $default = $column->getType()->convertToPHPValue(
-                    $column->getDefault(),
-                    DB::connection($this->connection)->getDoctrineSchemaManager()->getDatabasePlatform()
-                );
+                try {
+                    $default = $column->getType()->convertToPHPValue(
+                        $column->getDefault(),
+                        DB::connection($this->connection)->getDoctrineSchemaManager()->getDatabasePlatform()
+                    );
+                } catch (\Exception $e) {
+                    $default = null;
+                }
 
                 if ($column->getNotnull()) {
                     if (!is_null($default)) {
