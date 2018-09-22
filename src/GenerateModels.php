@@ -348,18 +348,18 @@ class GenerateModels extends Command
 
                 $foreignTable = $foreignKey->getForeignTableName();
 
-                $name = preg_replace('#_id$#si', '', $localColumn);
-
                 $this->relationships[$table][] = [
                     'type' => 'belongsTo',
-                    'name' => camel_case(str_singular($name)),
+                    'name' => camel_case(str_singular($localName)),
                     'class' => $this->getModelName($foreignTable),
                     'foreign_key' => $localColumn,
                     'local_key' => $this->primaryKeys[$table],
                 ];
 
-                if ($name != str_singular($table)) {
-                    $name = $table . '_' . $name;
+                $name = $table;
+
+                if ($localName != str_singular($foreignTable)) {
+                    $name = $localName . '_' . $name;
                 }
 
                 $this->relationships[$foreignTable][] = [
@@ -644,7 +644,12 @@ class GenerateModels extends Command
 
     }
 
-    protected function generateUserRelationshipsTrait() {
+    /**
+     * Copy the base model into the App\Models namespace
+     * @method copyBaseModel
+     * @return void
+     */
+    protected function copyBaseModel() {
 
         $filename = app_path('Models/BaseModel.php');
 
@@ -655,16 +660,14 @@ class GenerateModels extends Command
             $this->comment("The class App\Models\BaseModel already exists, don't overwrite.");
         }
 
-
     }
 
-
     /**
-     * Copy the base model into the App\Models namespace
-     * @method copyBaseModel
+     * Generate UserRelationships trait
+     * @method generateUserRelationshipsTrait
      * @return void
      */
-    protected function copyBaseModel() {
+    protected function generateUserRelationshipsTrait() {
 
         if (isset($this->relationships['users'])) {
 
@@ -673,7 +676,7 @@ class GenerateModels extends Command
             if (!file_exists($filename) || $this->overwrite) {
 
                 $params = [
-                    'relationships' => $this->relationships['users'],
+                    'relationships' => isset($this->relationships['users']) ? $this->relationships['users'] : [],
                 ];
 
                 $content = self::OPEN_ROW . View::make('models-generator::user-relationships', $params)->render();
