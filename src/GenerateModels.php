@@ -137,6 +137,20 @@ class GenerateModels extends Command
         $this->buildPolymorphicRelationships();
         $this->buildRelationships();
 
+        $this->handleAliases();
+
+    }
+
+    protected function handleAliases() {
+
+        $aliases = config('models-generator.aliases', []);
+
+        foreach ($this->relationships as $table => &$relationships) {
+            foreach ($relationships as &$relationship) {
+                $relationship['name'] = isset($aliases[$table][$relationship['name']]) ? $aliases[$table][$relationship['name']] : $relationship['name'];
+            }
+        }
+
     }
 
     protected function buildOneToOneRelationships() {
@@ -644,11 +658,6 @@ class GenerateModels extends Command
 
     }
 
-    /**
-     * Copy the base model into the App\Models namespace
-     * @method copyBaseModel
-     * @return void
-     */
     protected function copyBaseModel() {
 
         $filename = app_path('Models/BaseModel.php');
@@ -660,11 +669,13 @@ class GenerateModels extends Command
             $this->comment("The class App\Models\BaseModel already exists, don't overwrite.");
         }
 
+
     }
 
+
     /**
-     * Generate UserRelationships trait
-     * @method generateUserRelationshipsTrait
+     * Copy the base model into the App\Models namespace
+     * @method copyBaseModel
      * @return void
      */
     protected function generateUserRelationshipsTrait() {

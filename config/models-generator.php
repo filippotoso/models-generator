@@ -81,4 +81,33 @@ return [
 
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Relationship aliases
+    |--------------------------------------------------------------------------
+    |
+    | Define the aliases for the models relationships.
+    | Let's say you have an owner_id foreign key in the projects table that
+    | links a project to the relative owner user. Normally the generator will
+    | create a relationship named ownerProjects from the foreign key and table
+    | names. If you think about it, the right name should be something like
+    | ownedProjects. Using the aliases config parameter you can rename the
+    | generated relationships whatever you want. 
+    */
+
+    'aliases' => [
+
+        /*
+        |--------------------------------------------------------------------------
+        | Example
+        |--------------------------------------------------------------------------
+        |
+        | 'users' => [
+        |     'ownerProjects' => 'ownedProjects',
+        | ],
+        |
+        */
+
+    ]
+
 ];
