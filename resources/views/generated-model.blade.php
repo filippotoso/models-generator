@@ -53,7 +53,7 @@ class {{ $class }} extends BaseModel {
     *
     * @var array
     */
-    protected $attributes = @exportModelProperty($attributes)
+    protected $attributes = @exportModelProperty($attributes);
 
 @endif
 @if (isset($casts) && is_array($casts) && !empty($casts))
@@ -62,7 +62,7 @@ class {{ $class }} extends BaseModel {
     *
     * @var array
     */
-    protected $casts = [];
+    protected $casts = @exportModelProperty($casts);
 
 @endif
 @if (isset($dates) && is_array($dates) && !empty($dates))
@@ -71,7 +71,9 @@ class {{ $class }} extends BaseModel {
     *
     * @var array
     */
-    protected $dates = [];
+    protected $dates = [
+        '{!! implode("', '", $dates) !!}',
+    ];
 
 @endif
 @if (isset($timestamps) && !$timestamps)
