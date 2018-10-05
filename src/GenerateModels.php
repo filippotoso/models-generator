@@ -106,6 +106,27 @@ class GenerateModels extends Command
         parent::__construct();
     }
 
+
+    /**
+     * Normalize columns
+     * @method normalizeColumns
+     * @param  array $columns
+     * @return array
+     */
+    protected function normalizeColumns($columns) {
+
+        $results = [];
+
+        foreach ($columns as $column => $data) {
+            $column = str_replace('`', '', $column);
+            $results[$column] = $data;
+        }
+
+        return $results;
+
+    }
+
+
     /**
      * Load the database information in local arrays
      * @method buildInternalData
@@ -125,7 +146,7 @@ class GenerateModels extends Command
         $this->relationships = [];
 
         foreach ($this->tables as $table) {
-            $this->columns[$table] = DB::connection($this->connection)->getDoctrineSchemaManager()->listTableColumns($table);
+            $this->columns[$table] = $this->normalizeColumns(DB::connection($this->connection)->getDoctrineSchemaManager()->listTableColumns($table));
             $this->indexes[$table] = DB::connection($this->connection)->getDoctrineSchemaManager()->listTableIndexes($table);
             $this->foreignKeys[$table] = DB::connection($this->connection)->getDoctrineSchemaManager()->listTableForeignKeys($table);
             $this->primaryKeys[$table] = isset($this->indexes[$table]['primary']) ? head($this->indexes[$table]['primary']->getColumns()) : null;
