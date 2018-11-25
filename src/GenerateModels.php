@@ -18,6 +18,7 @@ use Doctrine\DBAL\Types\JsonArrayType;
 use Doctrine\DBAL\Types\ObjectType;
 use Doctrine\DBAL\Types\BooleanType;
 use Doctrine\DBAL\Types\ArrayType;
+use Doctrine\DBAL\Types\Type;
 
 class GenerateModels extends Command
 {
@@ -457,7 +458,6 @@ class GenerateModels extends Command
         $columnsNames = array_keys($columns);
 
         $indexes = $this->indexes[$table];
-
         $primary = isset($indexes['primary']) ? head($indexes['primary']->getColumns()) : null;
 
         $exclude = [
@@ -475,6 +475,10 @@ class GenerateModels extends Command
             $results = array_diff($columnsNames, $exclude);
 
         } elseif ($type == 'attributes') {
+
+            if (!is_null($primary)) {
+                $exclude[] = $primary;
+            }
 
             foreach($columns as $columnName => $column) {
 
@@ -495,7 +499,16 @@ class GenerateModels extends Command
                     if (!is_null($default)) {
                         $results[$columnName] = $default;
                     } else {
-                        // TODO: Decide what to do in this case...
+                        $typeName = $column->getType()->getName();
+                        if (in_array($typeName, [Type::STRING, Type::TEXT, Type::BINARY, Type::BLOB, Type::GUID])) {
+                            $results[$columnName] = '';
+                        } elseif (in_array($typeName, [Type::BIGINT, Type::DECIMAL, Type::INTEGER, Type::FLOAT, Type::SMALLINT])) {
+                            $results[$columnName] = 0;
+                        } elseif (in_array($typeName, [Type::TARRAY, Type::SIMPLE_ARRAY, Type::JSON_ARRAY, Type::JSON])) {
+                            $results[$columnName] = '[]';
+                        } elseif (in_array($typeName, [Type::BOOLEAN])) {
+                            $results[$columnName] = false;
+                        }
                     }
                 } else {
                     $results[$columnName] = $default;
