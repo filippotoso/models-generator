@@ -697,15 +697,22 @@ class GenerateModels extends Command
         $filename = app_path('Models/BaseModel.php');
 
         if (!file_exists($filename) || $this->overwrite) {
+
+            $dir = dirname($filename);
+
+            if (!is_dir($dir)) {
+                mkdir($dir);
+            }
+
             copy(dirname(__DIR__) . '/resources/models/BaseModel.php', $filename);
             $this->info('BaseModel successfully copied!');
+
         } else {
             $this->comment("The class App\Models\BaseModel already exists, don't overwrite.");
         }
 
 
     }
-
 
     /**
      * Copy the base model into the App\Models namespace
