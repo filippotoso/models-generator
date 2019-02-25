@@ -1,4 +1,4 @@
-# Model Generator
+# Models Generator
 
 A Laravel Artisan command to automatically generate models from database tables.
 

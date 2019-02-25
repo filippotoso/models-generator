@@ -3,6 +3,13 @@ namespace App\Models;
 
 @if (isset($softDeletes) && $softDeletes)
 use Illuminate\Database\Eloquent\SoftDeletes;
+@endif
+@if (empty($uses))
+
+@else
+@foreach ($uses as $use)
+use App\{{ $use }};
+@endforeach
 
 @endif
 class {{ $class }} extends BaseModel {

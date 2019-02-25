@@ -22,7 +22,6 @@ use Doctrine\DBAL\Types\Type;
 
 class GenerateModels extends Command
 {
-
     protected const OPEN_ROW = '<' . '?php' . "\n\n";
 
     /**
@@ -92,10 +91,16 @@ class GenerateModels extends Command
     protected $manyToMany = [];
 
     /**
-     * Database primary kesy
+     * Database primary keys
      * @var array
      */
     protected $primaryKeys = [];
+
+    /**
+     * Relationship uses declarations
+     * @var array
+     */
+    protected $uses = [];
 
     /**
      * Create a new command instance.
@@ -114,8 +119,8 @@ class GenerateModels extends Command
      * @param  array $columns
      * @return array
      */
-    protected function normalizeColumns($columns) {
-
+    protected function normalizeColumns($columns)
+    {
         $results = [];
 
         foreach ($columns as $column => $data) {
@@ -124,7 +129,6 @@ class GenerateModels extends Command
         }
 
         return $results;
-
     }
 
 
@@ -133,8 +137,8 @@ class GenerateModels extends Command
      * @method buildInternalData
      * @return void
      */
-    protected function buildInternalData() {
-
+    protected function buildInternalData()
+    {
         $this->tables = array_diff(
             DB::connection($this->connection)->getDoctrineSchemaManager()->listTableNames(),
             config('models-generator.exclude')
@@ -145,6 +149,7 @@ class GenerateModels extends Command
         $this->foreignKeys = [];
         $this->primaryKeys = [];
         $this->relationships = [];
+        $this->uses = [];
 
         foreach ($this->tables as $table) {
             $this->columns[$table] = $this->normalizeColumns(DB::connection($this->connection)->getDoctrineSchemaManager()->listTableColumns($table));
@@ -158,13 +163,22 @@ class GenerateModels extends Command
         $this->buildOneToOneRelationships();
         $this->buildPolymorphicRelationships();
         $this->buildRelationships();
+        $this->buildUses();
 
         $this->handleAliases();
-
     }
 
-    protected function handleAliases() {
+    protected function buildUses()
+    {
+        foreach ($this->relationships as $table => $relationships) {
+            $this->uses[$table] = array_map(function($relationship) {
+                return $relationship['class'];
+            }, $relationships); 
+        }
+    }
 
+    protected function handleAliases()
+    {
         $aliases = config('models-generator.aliases', []);
 
         foreach ($this->relationships as $table => &$relationships) {
@@ -172,16 +186,14 @@ class GenerateModels extends Command
                 $relationship['name'] = isset($aliases[$table][$relationship['name']]) ? $aliases[$table][$relationship['name']] : $relationship['name'];
             }
         }
-
     }
 
-    protected function buildOneToOneRelationships() {
-
+    protected function buildOneToOneRelationships()
+    {
         $oneToOne = config('models-generator.one_to_one', []);
 
         foreach ($oneToOne as $ownerTable => $ownedTable) {
-
-            $foreignKeys = array_where($this->foreignKeys[$ownedTable], function($foreignKey) use ($ownerTable) {
+            $foreignKeys = array_where($this->foreignKeys[$ownedTable], function ($foreignKey) use ($ownerTable) {
                 return $foreignKey->getForeignTableName() == $ownerTable;
             });
 
@@ -200,45 +212,34 @@ class GenerateModels extends Command
                 'foreign_key' => $remoteColumn,
                 'local_key' => $this->primaryKeys[$ownerTable],
             ];
-
         }
-
     }
 
-    protected function buildManyToManyRelationships() {
-
+    protected function buildManyToManyRelationships()
+    {
         $this->manyToMany = [];
 
-        $tables = array_where($this->tables, function($value, $key) {
+        $tables = array_where($this->tables, function ($value, $key) {
             return str_contains($value, '_');
         });
 
         foreach ($tables as $table) {
-
             $foreignKeys = array_where($this->foreignKeys[$table], function ($foreignKey) use ($table) {
-
                 $foreignModel = str_singular($foreignKey->getForeignTableName());
 
                 if (ends_with($table, '_' . $foreignModel) || starts_with($table, $foreignModel. '_')) {
-
                     $localColumn = head($foreignKey->getLocalColumns());
 
                     if (ends_with($localColumn, '_id')) {
-
                         $potentialRemoteModel = substr($localColumn, 0, -3);
 
                         if ($potentialRemoteModel == $foreignModel) {
-
                             return true;
-
                         }
-
                     }
-
                 }
 
                 return false;
-
             });
 
             if (count($foreignKeys) != 2) {
@@ -272,13 +273,10 @@ class GenerateModels extends Command
                 'foreign_key' => head($rightForeignKey->getLocalColumns()),
                 'local_key' => head($leftForeignKey->getLocalColumns()),
             ];
-
         }
 
         foreach ($this->manyToMany as $manyToManyTables => $tables) {
-
             foreach ($tables as $table) {
-
                 $this->relationships[$table['table']][] = [
                     'type' => 'belongsToMany',
                     'name' => camel_case($table['remote_table']),
@@ -289,72 +287,54 @@ class GenerateModels extends Command
                     'timestamps' => $table['timestamps'],
                     'columns' => $table['columns'],
                 ];
-
             }
-
         }
-
-
     }
 
-    protected function getPolimorphicRelationshipName($table) {
-
+    protected function getPolimorphicRelationshipName($table)
+    {
         $columns = $this->columns[$table];
 
-        foreach($columns as $columnName => $column) {
-
+        foreach ($columns as $columnName => $column) {
             $typeColumn = str_replace('able_id', 'able_type', $columnName);
 
             if (ends_with($columnName, 'able_id') && isset($columns[$typeColumn])) {
-
                 return str_replace('_id', '', $columnName);
-
             }
-
         }
 
         return str_singular($table) . 'able';
-
     }
 
-    protected function buildPolymorphicRelationships() {
-
+    protected function buildPolymorphicRelationships()
+    {
         $polimorphicRelationships = config('models-generator.polymorphic', []);
 
         foreach ($polimorphicRelationships as $polimorphicTable => $tables) {
-
             foreach ($tables as $table) {
-
                 $this->relationships[$table][] = [
                     'type' => 'morphMany',
                     'name' => camel_case($polimorphicTable),
                     'class' => $this->getModelName($polimorphicTable),
                     'relationship' => $this->getPolimorphicRelationshipName($polimorphicTable),
                 ];
-
             }
 
             $columns = $this->columns[$polimorphicTable];
 
-            foreach($columns as $idColumn => $column) {
-
+            foreach ($columns as $idColumn => $column) {
                 $typeColumn = str_replace('able_id', 'able_type', $idColumn);
 
                 if (ends_with($idColumn, 'able_id') && isset($columns[$typeColumn])) {
-
                     $relationshipName = substr($idColumn, 0, -3);
 
                     $this->relationships[$polimorphicTable][$relationshipName] = [
                         'type' => 'morphTo',
                         'name' => $relationshipName,
                     ];
-
                 }
-
             }
-
         }
-
     }
 
     /**
@@ -362,10 +342,9 @@ class GenerateModels extends Command
      * @method buildRelationships
      * @return void
      */
-    protected function buildRelationships() {
-
+    protected function buildRelationships()
+    {
         foreach ($this->tables as $table) {
-
             $this->relationships[$table] = isset($this->relationships[$table]) ? $this->relationships[$table] : [];
 
             // Skip many to many tables
@@ -377,8 +356,7 @@ class GenerateModels extends Command
 
             $currentForeignKeys = $this->foreignKeys[$table];
 
-            foreach($currentForeignKeys as $foreignKey) {
-
+            foreach ($currentForeignKeys as $foreignKey) {
                 $localColumn = head($foreignKey->getLocalColumns());
                 $localName = ends_with($localColumn, '_id') ? substr($localColumn, 0, -3) : $localColumn;
 
@@ -405,11 +383,8 @@ class GenerateModels extends Command
                     'foreign_key' => $localColumn,
                     'local_key' => $this->primaryKeys[$table],
                 ];
-
             }
-
         }
-
     }
 
     /**
@@ -418,14 +393,13 @@ class GenerateModels extends Command
      * @param  string $table The origin table
      * @return void
      */
-    protected function generateUserModel($table) {
-
+    protected function generateUserModel($table)
+    {
         $class = $this->getModelName($table);
 
         $filename = app_path(sprintf('%s.php', $class));
 
         if (!file_exists($filename)) {
-
             $params = [
                 'class' => $class,
             ];
@@ -440,7 +414,6 @@ class GenerateModels extends Command
 
             file_put_contents($filename, $content);
         }
-
     }
 
     /**
@@ -450,8 +423,8 @@ class GenerateModels extends Command
      * @param  string          $type
      * @return array
      */
-    protected function getTableColumns($table, $type) {
-
+    protected function getTableColumns($table, $type)
+    {
         $results = [];
 
         $columns = $this->columns[$table];
@@ -465,7 +438,6 @@ class GenerateModels extends Command
         ];
 
         if ($type == 'fillable') {
-
             if (!is_null($primary)) {
                 $exclude[] = $primary;
             }
@@ -473,15 +445,12 @@ class GenerateModels extends Command
             $exclude[] = 'password';
 
             $results = array_diff($columnsNames, $exclude);
-
         } elseif ($type == 'attributes') {
-
             if (!is_null($primary)) {
                 $exclude[] = $primary;
             }
 
-            foreach($columns as $columnName => $column) {
-
+            foreach ($columns as $columnName => $column) {
                 if (in_array($columnName, $exclude)) {
                     continue;
                 }
@@ -513,11 +482,8 @@ class GenerateModels extends Command
                 } else {
                     $results[$columnName] = $default;
                 }
-
             }
-
         } elseif ($type == 'dates') {
-
             $dateTypes = [
                 TimeType::class,
                 DateType::class,
@@ -526,8 +492,7 @@ class GenerateModels extends Command
                 VarDateTimeType::class,
             ];
 
-            foreach($columns as $columnName => $column) {
-
+            foreach ($columns as $columnName => $column) {
                 if (in_array($columnName, $exclude)) {
                     continue;
                 }
@@ -537,11 +502,8 @@ class GenerateModels extends Command
                 if (in_array($type, $dateTypes)) {
                     $results[] = $columnName;
                 }
-
             }
-
         } elseif ($type == 'casts') {
-
             $types = [
                 JsonType::class => 'array',
                 JsonArrayType::class => 'array',
@@ -550,8 +512,7 @@ class GenerateModels extends Command
                 BooleanType::class => 'boolean',
             ];
 
-            foreach($columns as $columnName => $column) {
-
+            foreach ($columns as $columnName => $column) {
                 if (in_array($columnName, $exclude)) {
                     continue;
                 }
@@ -561,13 +522,10 @@ class GenerateModels extends Command
                 if (isset($types[$type])) {
                     $results[$columnName] = $types[$type];
                 }
-
             }
-
         }
 
         return $results;
-
     }
 
     /**
@@ -576,7 +534,8 @@ class GenerateModels extends Command
      * @param  string        $table
      * @return boolean
      */
-    protected function getTimestamps($table) {
+    protected function getTimestamps($table)
+    {
         return isset($this->columns[$table]['created_at']) && isset($this->columns[$table]['updated_at']);
     }
 
@@ -586,7 +545,8 @@ class GenerateModels extends Command
      * @param  string        $table
      * @return boolean
      */
-    protected function getSoftDeletes($table) {
+    protected function getSoftDeletes($table)
+    {
         return isset($this->columns[$table]['deleted_at']);
     }
 
@@ -596,7 +556,8 @@ class GenerateModels extends Command
      * @param  string        $table
      * @return string|null
      */
-    protected function getPrimaryKey($table) {
+    protected function getPrimaryKey($table)
+    {
         return $this->primaryKeys[$table];
     }
 
@@ -606,8 +567,8 @@ class GenerateModels extends Command
      * @param  string        $table
      * @return boolean
      */
-    protected function getIncrementing($table) {
-
+    protected function getIncrementing($table)
+    {
         $indexes = $this->indexes[$table];
 
         $primary = isset($indexes['primary']) ? head($indexes['primary']->getColumns()) : null;
@@ -619,7 +580,6 @@ class GenerateModels extends Command
         }
 
         return false;
-
     }
 
     /**
@@ -628,8 +588,20 @@ class GenerateModels extends Command
      * @param  string        $table
      * @return array
      */
-    protected function getRelationships($table) {
+    protected function getRelationships($table)
+    {
         return $this->relationships[$table];
+    }
+
+    /**
+     * Get the table uses
+     * @method getUses
+     * @param  string        $table
+     * @return array
+     */
+    protected function getUses($table)
+    {
+        return $this->uses[$table];
     }
 
     /**
@@ -638,7 +610,8 @@ class GenerateModels extends Command
      * @param  string       $table
      * @return string
      */
-    protected function getModelName($table) {
+    protected function getModelName($table)
+    {
         return studly_case(str_singular($table));
     }
 
@@ -648,14 +621,13 @@ class GenerateModels extends Command
      * @param  string $table The origin table
      * @return void
      */
-    protected function generateModel($table) {
-
+    protected function generateModel($table)
+    {
         $class = $this->getModelName($table);
 
         $filename = app_path(sprintf('Models\%s.php', $class));
 
         if (!file_exists($filename) || $this->overwrite) {
-
             $this->comment(sprintf('Generating model for "%s" table.', $table));
 
             $params = [
@@ -670,6 +642,7 @@ class GenerateModels extends Command
                 'dates' => $this->getTableColumns($table, 'dates'),
                 'casts' => $this->getTableColumns($table, 'casts'),
                 'relationships' => $this->getRelationships($table),
+                'uses' => $this->getUses($table),
             ];
 
             $content = self::OPEN_ROW . View::make('models-generator::generated-model', $params)->render();
@@ -683,21 +656,16 @@ class GenerateModels extends Command
             file_put_contents($filename, $content);
 
             $this->info(sprintf('Model "%s" successfully generated!', $class));
-
         } else {
-
             $this->error(sprintf('Model "%s" already exists (and no "overwrite" parameter), skipping.', $class));
-
         }
-
     }
 
-    protected function copyBaseModel() {
-
+    protected function copyBaseModel()
+    {
         $filename = app_path('Models/BaseModel.php');
 
         if (!file_exists($filename) || $this->overwrite) {
-
             $dir = dirname($filename);
 
             if (!is_dir($dir)) {
@@ -706,12 +674,9 @@ class GenerateModels extends Command
 
             copy(dirname(__DIR__) . '/resources/models/BaseModel.php', $filename);
             $this->info('BaseModel successfully copied!');
-
         } else {
             $this->comment("The class App\Models\BaseModel already exists, don't overwrite.");
         }
-
-
     }
 
     /**
@@ -719,14 +684,12 @@ class GenerateModels extends Command
      * @method copyBaseModel
      * @return void
      */
-    protected function generateUserRelationshipsTrait() {
-
+    protected function generateUserRelationshipsTrait()
+    {
         if (isset($this->relationships['users'])) {
-
             $filename = app_path('Models/Traits/UserRelationships.php');
 
             if (!file_exists($filename) || $this->overwrite) {
-
                 $params = [
                     'relationships' => isset($this->relationships['users']) ? $this->relationships['users'] : [],
                 ];
@@ -742,15 +705,10 @@ class GenerateModels extends Command
                 file_put_contents($filename, $content);
 
                 $this->info('UserRelationships trait successfully generated!');
-
             } else {
-
                 $this->comment("The trait App\Models\Traits\UserRelationships already exists, don't overwrite.");
-
             }
-
         }
-
     }
 
     /**
@@ -758,7 +716,8 @@ class GenerateModels extends Command
      * @method extendBlade
      * @return void
      */
-    protected function extendBlade() {
+    protected function extendBlade()
+    {
         Blade::directive('exportModelProperty', function ($expression) {
             return "<?php
                 if (is_array($expression)) {
@@ -772,7 +731,6 @@ class GenerateModels extends Command
                 }
             ?>";
         });
-
     }
 
     /**
@@ -782,7 +740,6 @@ class GenerateModels extends Command
      */
     public function handle()
     {
-
         $this->overwrite = $this->option('overwrite');
 
         $this->connection = $this->option('connection') == 'default' ? null : $this->option('connection');
@@ -806,7 +763,6 @@ class GenerateModels extends Command
             $this->generateModel($table);
 
             $this->generateUserModel($table);
-
         }
 
         $this->copyBaseModel();
@@ -814,7 +770,5 @@ class GenerateModels extends Command
         $this->generateUserRelationshipsTrait();
 
         $this->info('Models successfully generated!');
-
     }
-
 }
