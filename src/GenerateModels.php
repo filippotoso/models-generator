@@ -171,9 +171,9 @@ class GenerateModels extends Command
     protected function buildUses()
     {
         foreach ($this->relationships as $table => $relationships) {
-            $this->uses[$table] = array_map(function($relationship) {
+            $this->uses[$table] = array_unique(array_map(function ($relationship) {
                 return $relationship['class'];
-            }, $relationships); 
+            }, $relationships));
         }
     }
 
@@ -227,7 +227,7 @@ class GenerateModels extends Command
             $foreignKeys = array_where($this->foreignKeys[$table], function ($foreignKey) use ($table) {
                 $foreignModel = str_singular($foreignKey->getForeignTableName());
 
-                if (ends_with($table, '_' . $foreignModel) || starts_with($table, $foreignModel. '_')) {
+                if (ends_with($table, '_' . $foreignModel) || starts_with($table, $foreignModel . '_')) {
                     $localColumn = head($foreignKey->getLocalColumns());
 
                     if (ends_with($localColumn, '_id')) {

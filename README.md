@@ -28,7 +28,7 @@ By default the generator doesn't create the models of Laravel's tables like jobs
 
 ## Configuration
 
-You can public the configuration file with the following command:
+You can publish the configuration file with the following command:
 
 ```
 php artisan vendor:publish --tag=config --provider="FilippoToso\ModelsGenerator\ServiceProvider"
