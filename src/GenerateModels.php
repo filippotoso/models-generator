@@ -139,10 +139,7 @@ class GenerateModels extends Command
      */
     protected function buildInternalData()
     {
-        $this->tables = array_diff(
-            DB::connection($this->connection)->getDoctrineSchemaManager()->listTableNames(),
-            config('models-generator.exclude')
-        );
+        $this->tables = DB::connection($this->connection)->getDoctrineSchemaManager()->listTableNames();
 
         $this->columns = [];
         $this->indexes = [];
@@ -753,7 +750,12 @@ class GenerateModels extends Command
 
         $this->info('Models generation started.');
 
-        foreach ($this->tables as $table) {
+        $tables = array_diff(
+            DB::connection($this->connection)->getDoctrineSchemaManager()->listTableNames(),
+            config('models-generator.exclude')
+        );
+
+        foreach ($tables as $table) {
 
             // Skip many to many tables
             if (isset($this->manyToMany[$table])) {
