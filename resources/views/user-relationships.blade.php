@@ -1,8 +1,8 @@
 
 namespace App\Models\Traits;
 
-@foreach ($relationships as $relationship)
-use App\{{ $relationship['class'] }};
+@foreach ($uses as $use)
+use App\{{ $use }};
 @endforeach
 
 trait UserRelationships  {

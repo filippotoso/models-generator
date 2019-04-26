@@ -688,6 +688,7 @@ class GenerateModels extends Command
 
             if (!file_exists($filename) || $this->overwrite) {
                 $params = [
+                    'uses' => isset($this->uses['users']) ? $this->uses['users'] : [],
                     'relationships' => isset($this->relationships['users']) ? $this->relationships['users'] : [],
                 ];
 
