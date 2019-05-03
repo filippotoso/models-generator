@@ -1,6 +1,6 @@
 # Models Generator
 
-A Laravel Artisan command to automatically generate models from database tables.
+A Laravel Artisan command to automatically generate models and factories from database tables.
 
 ## Requirements
 
@@ -65,16 +65,28 @@ If there are existing models in the App namespace they will never be overwritten
 You can modify the default behavior using the following parameters:
 
 ```
-php artisan generate:models --overwrite
+php artisan generate:models --overwrite=models
 ```
 
-With the overwrite option the generator will always overwrite the models in the App\Models namespace. This can be done safely if you follow the rule to not change these models but edit the ones in the App namespace.
+With the overwrite option set to "models" the generator will always overwrite the models in the App\Models namespace. This can be done safely if you follow the rule to not change these models but edit the ones in the App namespace.
 
 ```
 php artisan generate:models --connection=sqlite
 ```
 
 You can specify a different connection if you need to.
+
+```
+php artisan generate:models --factories
+```
+
+You can tell the generator to also build the factories associated to the generated models. 
+
+```
+php artisan generate:models --factories --overwrite=factories
+```
+
+You can set the overwrite option to "factories" to overwrite only the factories or to "all" to overwrite both models and factories.
 
 ## Workflow
 
@@ -86,7 +98,8 @@ To gain the maximum benefits from this package you should follow this workflow:
 - configure the generator
 - run the generator
 - customize the models in the App namespace
+- customize the factories in the database/factories folder
 
-Then, every time you create and run a new migration, you should execute the generator again to keep the models in sync with the database.
+Then, every time you create and run a new migration, you should execute the generator again to keep the models in sync with the database. In this case, beware that the changes you made to your factories could be overwritten if you specified the wrong overwrite option (all or factories).
 
 You must also follow Laravel's guidelines about tables and columns names otherwise the generator will not be able to identify the existing relationships.

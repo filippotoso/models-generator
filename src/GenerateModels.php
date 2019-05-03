@@ -30,7 +30,8 @@ class GenerateModels extends Command
      * @var string
      */
     protected $signature = 'generate:models
-                            {--overwrite : Overwrite already generated models}
+                            {--overwrite= : Overwrite already generated models. Available options: all, models, factories}
+                            {--factories : Specify if the generator has to create database factories too}
                             {--connection=default : Which connection use}';
 
     /**
@@ -53,6 +54,13 @@ class GenerateModels extends Command
      * @var boolean
      */
     protected $overwrite = false;
+
+    /**
+     * Specify if the generator has to create database factories too
+     *
+     * @var boolean
+     */
+    protected $factories = false;
 
     /**
      * Database tables
@@ -439,8 +447,6 @@ class GenerateModels extends Command
                 $exclude[] = $primary;
             }
 
-            $exclude[] = 'password';
-
             $results = array_diff($columnsNames, $exclude);
         } elseif ($type == 'attributes') {
             if (!is_null($primary)) {
@@ -523,6 +529,114 @@ class GenerateModels extends Command
         }
 
         return $results;
+    }
+
+
+    protected function getFactoryColumns($table)
+    {
+        $results = [];
+
+        $columns = $this->columns[$table];
+        $columnsNames = array_keys($columns);
+
+        $indexes = $this->indexes[$table];
+        $primary = isset($indexes['primary']) ? head($indexes['primary']->getColumns()) : null;
+
+        $exclude = [
+            'created_at', 'updated_at', 'deleted_at',
+        ];
+
+        if (!is_null($primary)) {
+            $exclude[] = $primary;
+        }
+
+        foreach ($columns as $columnName => $column) {
+            if (in_array($columnName, $exclude)) {
+                continue;
+            }
+
+            // Relationships
+
+            $foreignKey = current(array_filter($this->foreignKeys[$table], function ($foreignKey) use ($columnName) {
+                return in_array($columnName, $foreignKey->getLocalColumns());
+            }));
+
+            if ($foreignKey) {
+                $results[$columnName] = 'App\\' . $this->getModelName($foreignKey->getForeignTableName());
+                continue;
+            }
+
+            // Polimorphic Relationships
+
+            // Skip the type column
+            $idColumn = str_replace('able_type', 'able_id', $columnName);
+
+            if (ends_with($columnName, 'able_type') && isset($columns[$idColumn])) {
+                $results[$columnName] = 'App\\User::class';
+                continue;
+            }
+
+            $typeColumn = str_replace('able_id', 'able_type', $columnName);
+
+            if (ends_with($columnName, 'able_id') && isset($columns[$typeColumn])) {
+                $results[$columnName] = 'App\\User';
+                continue;
+            }
+
+            $typeName = $column->getType()->getName();
+
+            if ($columnName == 'first_name') {
+                $results[$columnName] = '$faker->firstName';
+            } elseif ($columnName == 'last_name') {
+                $results[$columnName] = '$faker->lastName';
+            } elseif (strpos($columnName, 'name') !== false) {
+                $results[$columnName] = '$faker->name()';
+            } elseif (strpos($columnName, 'company') !== false) {
+                $results[$columnName] = '$faker->company';
+            } elseif (strpos($columnName, 'latitude') !== false) {
+                $results[$columnName] = '$faker->latitude()';
+            } elseif (strpos($columnName, 'longitude') !== false) {
+                $results[$columnName] = '$faker->longitude()';
+            } elseif (strpos($columnName, 'address') !== false) {
+                $results[$columnName] = '$faker->address';
+            } elseif (strpos($columnName, 'country') !== false) {
+                $results[$columnName] = '$faker->address';
+            } elseif (strpos($columnName, 'phone') !== false) {
+                $results[$columnName] = '$faker->phoneNumber';
+            } elseif (strpos($columnName, 'email') !== false) {
+                $results[$columnName] = '$faker->safeEmail';
+            } elseif (strpos($columnName, 'domain') !== false) {
+                $results[$columnName] = '$faker->safeEmailDomain';
+            } elseif ($columnName == 'city') {
+                $results[$columnName] = '$faker->city';
+            } elseif ($typeName == Type::STRING) {
+                $results[$columnName] = '$faker->text()';
+            } elseif ($typeName == Type::TEXT) {
+                $results[$columnName] = '$faker->paragraphs()';
+            } elseif ($typeName == Type::SMALLINT) {
+                $results[$columnName] = '$faker->numberBetween(0, 255)';
+            } elseif (in_array($typeName, [Type::BIGINT, Type::INTEGER])) {
+                $results[$columnName] = '$faker->randomNumber()';
+            } elseif (in_array($typeName, [Type::DECIMAL, Type::FLOAT])) {
+                $results[$columnName] = '$faker->randomFloat()';
+            } elseif (in_array($typeName, [Type::BOOLEAN])) {
+                $results[$columnName] = '$faker->boolean()';
+            } elseif (in_array($typeName, [Type::DATE, Type::DATE_IMMUTABLE])) {
+                $results[$columnName] = '$faker->date()';
+            } elseif (in_array($typeName, [Type::DATETIME, Type::DATETIMETZ, Type::DATETIME_IMMUTABLE, Type::DATETIMETZ_IMMUTABLE])) {
+                $results[$columnName] = '$faker->dateTime()';
+            } elseif (in_array($typeName, [Type::TIME, Type::TIME_IMMUTABLE])) {
+                $results[$columnName] = '$faker->time()';
+            } elseif ($column->getNotnull()) {
+                $results[$columnName] = "null, // INVALID BUT DON'T KNOW WHAT TO DO!";
+            } else {
+                $results[$columnName] = 'null';
+            }
+
+        }
+
+        return $results;
+
     }
 
     /**
@@ -624,7 +738,7 @@ class GenerateModels extends Command
 
         $filename = app_path(sprintf('Models\%s.php', $class));
 
-        if (!file_exists($filename) || $this->overwrite) {
+        if (!file_exists($filename) || in_array($this->overwrite, ['all', 'models'])) {
             $this->comment(sprintf('Generating model for "%s" table.', $table));
 
             $params = [
@@ -654,15 +768,46 @@ class GenerateModels extends Command
 
             $this->info(sprintf('Model "%s" successfully generated!', $class));
         } else {
-            $this->error(sprintf('Model "%s" already exists (and no "overwrite" parameter), skipping.', $class));
+            $this->error(sprintf('Model "%s" already exists (and no overwrite requestes), skipping.', $class));
         }
+    }
+
+    protected function generateFactory($table)
+    {
+        $class = $this->getModelName($table);
+
+        $filename = database_path(sprintf('factories/%sFactory.php', $class));
+
+        if (!file_exists($filename) || in_array($this->overwrite, ['all', 'factories'])) {
+            $this->comment(sprintf('Generating factory for "%s" model.', $class));
+
+            $params = [
+                'model' => $class,
+                'columns' => $this->getFactoryColumns($table),
+            ];
+
+            $content = self::OPEN_ROW . View::make('models-generator::generated-factory', $params)->render();
+
+            $directory = dirname($filename);
+
+            if (!is_dir($directory)) {
+                mkdir($directory, 0777, true);
+            }
+
+            file_put_contents($filename, $content);
+
+            $this->info(sprintf('Factory "%sFactory" successfully generated!', $class));
+        } else {
+            $this->error(sprintf('Factory "%sFactory" already exists (and no "overwrite" parameter), skipping.', $class));
+        }
+
     }
 
     protected function copyBaseModel()
     {
         $filename = app_path('Models/BaseModel.php');
 
-        if (!file_exists($filename) || $this->overwrite) {
+        if (!file_exists($filename) || in_array($this->overwrite, ['all', 'models'])) {
             $dir = dirname($filename);
 
             if (!is_dir($dir)) {
@@ -686,7 +831,7 @@ class GenerateModels extends Command
         if (isset($this->relationships['users'])) {
             $filename = app_path('Models/Traits/UserRelationships.php');
 
-            if (!file_exists($filename) || $this->overwrite) {
+            if (!file_exists($filename) || in_array($this->overwrite, ['all', 'models'])) {
                 $params = [
                     'uses' => isset($this->uses['users']) ? $this->uses['users'] : [],
                     'relationships' => isset($this->relationships['users']) ? $this->relationships['users'] : [],
@@ -739,6 +884,7 @@ class GenerateModels extends Command
     public function handle()
     {
         $this->overwrite = $this->option('overwrite');
+        $this->factories = $this->option('factories');
 
         $this->connection = $this->option('connection') == 'default' ? null : $this->option('connection');
 
@@ -766,6 +912,10 @@ class GenerateModels extends Command
             $this->generateModel($table);
 
             $this->generateUserModel($table);
+
+            if ($this->factories) {
+                $this->generateFactory($table);
+            }
         }
 
         $this->copyBaseModel();
