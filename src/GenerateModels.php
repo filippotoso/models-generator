@@ -19,6 +19,7 @@ use Doctrine\DBAL\Types\ObjectType;
 use Doctrine\DBAL\Types\BooleanType;
 use Doctrine\DBAL\Types\ArrayType;
 use Doctrine\DBAL\Types\Type;
+use Illuminate\Database\Schema\Builder;
 
 class GenerateModels extends Command
 {
@@ -585,32 +586,12 @@ class GenerateModels extends Command
 
             $typeName = $column->getType()->getName();
 
-            if ($columnName == 'first_name') {
-                $results[$columnName] = '$faker->firstName';
-            } elseif ($columnName == 'last_name') {
-                $results[$columnName] = '$faker->lastName';
-            } elseif (strpos($columnName, 'name') !== false) {
-                $results[$columnName] = '$faker->name()';
-            } elseif (strpos($columnName, 'company') !== false) {
-                $results[$columnName] = '$faker->company';
-            } elseif (strpos($columnName, 'latitude') !== false) {
-                $results[$columnName] = '$faker->latitude()';
-            } elseif (strpos($columnName, 'longitude') !== false) {
-                $results[$columnName] = '$faker->longitude()';
-            } elseif (strpos($columnName, 'address') !== false) {
-                $results[$columnName] = '$faker->address';
-            } elseif (strpos($columnName, 'country') !== false) {
-                $results[$columnName] = '$faker->address';
-            } elseif (strpos($columnName, 'phone') !== false) {
-                $results[$columnName] = '$faker->phoneNumber';
-            } elseif (strpos($columnName, 'email') !== false) {
-                $results[$columnName] = '$faker->safeEmail';
-            } elseif (strpos($columnName, 'domain') !== false) {
-                $results[$columnName] = '$faker->safeEmailDomain';
-            } elseif ($columnName == 'city') {
-                $results[$columnName] = '$faker->city';
+            $columnSize = $column->getLength();
+
+            if ($guessed = $this->guessFromName($columnName, $columnSize)) {
+                $results[$columnName] = $guessed;
             } elseif ($typeName == Type::STRING) {
-                $results[$columnName] = '$faker->text()';
+                $results[$columnName] = $this->getTextFaker($columnSize);
             } elseif ($typeName == Type::TEXT) {
                 $results[$columnName] = '$faker->paragraphs()';
             } elseif ($typeName == Type::SMALLINT) {
@@ -637,6 +618,103 @@ class GenerateModels extends Command
 
         return $results;
 
+    }
+
+    protected function guessFromName($name, $size = null)
+    {
+        $name = strtolower($name);
+
+        if (preg_match('/^is[_A-Z]/', $name)) {
+            return '$faker->boolean';
+        }
+
+        if (preg_match('/(_a|A)t$/', $name)) {
+            return '$faker->dateTime';
+        }
+
+        switch (str_replace('_', '', $name)) {
+            case 'firstname':
+                return '$faker->firstName';
+            case 'lastname':
+                return '$faker->lastName';
+            case 'username':
+            case 'login':
+                return '$faker->userName';
+            case 'email':
+            case 'emailaddress':
+                return '$faker->email';
+            case 'phonenumber':
+            case 'phone':
+            case 'telephone':
+            case 'telnumber':
+                return '$faker->phoneNumber';
+            case 'address':
+                return '$faker->address';
+            case 'city':
+            case 'town':
+                return '$faker->city';
+            case 'streetaddress':
+                return '$faker->streetAddress';
+            case 'postcode':
+            case 'zipcode':
+                return '$faker->postcode';
+            case 'state':
+                return '$faker->state';
+            case 'county':
+                return '$faker->state';
+            case 'country':
+                switch ($size) {
+                    case 2:
+                        return '$faker->countryCode';
+                    case 3:
+                        return '$faker->countryISOAlpha3';
+                    case 5:
+                    case 6:
+                        return '$faker->locale';
+                    default:
+                        return '$faker->country';
+                }
+            case 'latitude':
+                return '$faker->latitude';
+            case 'longitude':
+                return '$faker->longitude';
+            case 'domain':
+                return '$faker->domain';
+            case 'locale':
+                return '$faker->locale';
+            case 'currency':
+            case 'currencycode':
+                return '$faker->currencyCode';
+            case 'url':
+            case 'website':
+                return '$faker->url';
+            case 'company':
+            case 'companyname':
+            case 'employer':
+                return '$faker->company';
+            case 'title':
+                if ($size !== null && $size <= 10) {
+                    return '$faker->title';
+                }
+                return '$faker->sentence';
+            case 'body':
+            case 'summary':
+            case 'article':
+            case 'description':
+                return $this->getTextFaker($size);
+        }
+
+        return false;
+
+
+    }
+
+    protected function getTextFaker($size)
+    {
+        if ($size < 200) {
+            return sprintf('$faker->text(%d)', $size);
+        }
+        return '$faker->text()';
     }
 
     /**
@@ -768,7 +846,7 @@ class GenerateModels extends Command
 
             $this->info(sprintf('Model "%s" successfully generated!', $class));
         } else {
-            $this->error(sprintf('Model "%s" already exists (and no overwrite requestes), skipping.', $class));
+            $this->error(sprintf('Model "%s" already exists (and no overwrite requested), skipping.', $class));
         }
     }
 
