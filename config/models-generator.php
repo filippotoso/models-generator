@@ -11,7 +11,7 @@ return [
     | create models. This is usually used to avoid the creation of Laravel
     | own models like jobs, queue, and so on.
     |
-    */
+ */
 
     'exclude' => [
 
@@ -37,7 +37,7 @@ return [
     | the owner will be 'users' and the owned table 'phones'.
     | Ref: https://laravel.com/docs/5.6/eloquent-relationships#one-to-one
     |
-    */
+     */
 
     'one_to_one' => [
 
@@ -48,7 +48,7 @@ return [
         |
         | 'users' => 'phones',
         |
-        */
+     */
 
     ],
 
@@ -77,7 +77,7 @@ return [
         |     'videos',
         | ],
         |
-        */
+     */
 
     ],
 
@@ -93,7 +93,7 @@ return [
     | names. If you think about it, the right name should be something like
     | ownedProjects. Using the aliases config parameter you can rename the
     | generated relationships whatever you want. 
-    */
+     */
 
     'aliases' => [
 
@@ -106,8 +106,19 @@ return [
         |     'ownerProjects' => 'ownedProjects',
         | ],
         |
-        */
+     */
 
-    ]
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Polimorphic fields suffic
+    |--------------------------------------------------------------------------
+    |
+    | Define the suffix used to identify the field used in a polyorphic relationship.
+    | By default, it's "able" to identify fields like translatable_id and translatable_type.  
+     */
+
+    'polymorphic_suffix' => 'able',
 
 ];

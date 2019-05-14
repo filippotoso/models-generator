@@ -299,17 +299,22 @@ class GenerateModels extends Command
 
     protected function getPolimorphicRelationshipName($table)
     {
+
         $columns = $this->columns[$table];
 
         foreach ($columns as $columnName => $column) {
-            $typeColumn = str_replace('able_id', 'able_type', $columnName);
+            $fieldId = config('models-generator.polymorphic_suffix') . '_id';
+            $fieldType = config('models-generator.polymorphic_suffix') . '_type';
 
-            if (ends_with($columnName, 'able_id') && isset($columns[$typeColumn])) {
+            $typeColumn = str_replace($fieldId, $fieldType, $columnName);
+
+            if (ends_with($columnName, $fieldId) && isset($columns[$typeColumn])) {
                 return str_replace('_id', '', $columnName);
             }
         }
 
-        return str_singular($table) . 'able';
+        return str_singular($table) . config('models-generator.polymorphic_suffix');
+
     }
 
     protected function buildPolymorphicRelationships()
