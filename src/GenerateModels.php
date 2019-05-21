@@ -890,7 +890,7 @@ class GenerateModels extends Command
     {
         $filename = app_path('Models/BaseModel.php');
 
-        if (!file_exists($filename) || in_array($this->overwrite, ['all', 'models'])) {
+        if (!file_exists($filename)) {
             $dir = dirname($filename);
 
             if (!is_dir($dir)) {
