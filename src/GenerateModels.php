@@ -180,6 +180,11 @@ class GenerateModels extends Command
             $this->uses[$table] = array_unique(array_map(function ($relationship) {
                 return $relationship['class'];
             }, $relationships));
+
+            $currentModel = $this->getModelName($table);
+            $this->uses[$table] = array_filter($this->uses[$table], function ($use) use ($currentModel) {
+                return $currentModel != $use;
+            });
         }
     }
 
@@ -341,6 +346,7 @@ class GenerateModels extends Command
 
                     $this->relationships[$polimorphicTable][$relationshipName] = [
                         'type' => 'morphTo',
+                        'class' => $this->getModelName($polimorphicTable),
                         'name' => $relationshipName,
                     ];
                 }
