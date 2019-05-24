@@ -722,7 +722,7 @@ class GenerateModels extends Command
 
     protected function getTextFaker($size)
     {
-        if ($size < 200) {
+        if (($size > 5) && ($size < 200)) {
             return sprintf('$faker->text(%d)', $size);
         }
         return '$faker->text()';
