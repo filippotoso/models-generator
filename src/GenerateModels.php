@@ -986,6 +986,8 @@ class GenerateModels extends Command
 
         $this->info('Models generation started.');
 
+        $this->copyBaseModel();
+
         $tables = array_diff(
             DB::connection($this->connection)->getDoctrineSchemaManager()->listTableNames(),
             config('models-generator.exclude')
@@ -1006,8 +1008,6 @@ class GenerateModels extends Command
                 $this->generateFactory($table);
             }
         }
-
-        $this->copyBaseModel();
 
         $this->generateUserRelationshipsTrait();
 
