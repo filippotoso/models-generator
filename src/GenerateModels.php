@@ -690,7 +690,7 @@ class GenerateModels extends Command
             case 'longitude':
                 return '$faker->longitude';
             case 'domain':
-                return '$faker->domain';
+                return '$faker->domainName';
             case 'locale':
                 return '$faker->locale';
             case 'currency':
