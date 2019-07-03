@@ -604,7 +604,7 @@ class GenerateModels extends Command
             } elseif ($typeName == Type::STRING) {
                 $results[$columnName] = $this->getTextFaker($columnSize);
             } elseif ($typeName == Type::TEXT) {
-                $results[$columnName] = '$faker->paragraphs()';
+                $results[$columnName] = '$faker->paragraph(10)';
             } elseif ($typeName == Type::SMALLINT) {
                 $results[$columnName] = '$faker->numberBetween(0, 255)';
             } elseif (in_array($typeName, [Type::BIGINT, Type::INTEGER])) {
