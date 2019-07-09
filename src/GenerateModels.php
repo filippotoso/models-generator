@@ -986,12 +986,14 @@ class GenerateModels extends Command
 
         $this->info('Models generation started.');
 
-        $this->copyBaseModel();
-
         $tables = array_diff(
             DB::connection($this->connection)->getDoctrineSchemaManager()->listTableNames(),
             config('models-generator.exclude')
         );
+
+        $this->copyBaseModel();
+
+        $this->generateUserRelationshipsTrait();
 
         foreach ($tables as $table) {
 
@@ -1003,13 +1005,19 @@ class GenerateModels extends Command
             $this->generateModel($table);
 
             $this->generateUserModel($table);
+        }
+
+        foreach ($tables as $table) {
+
+            // Skip many to many tables
+            if (isset($this->manyToMany[$table])) {
+                continue;
+            }
 
             if ($this->factories) {
                 $this->generateFactory($table);
             }
         }
-
-        $this->generateUserRelationshipsTrait();
 
         $this->info('Models successfully generated!');
     }
