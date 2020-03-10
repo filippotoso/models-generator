@@ -4,7 +4,7 @@
     */
     public function {{ $relationship['name'] }}()
     {
-        return $this->hasOne({{ $relationship['class'] }}::class, '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}');
+        return $this->hasOne(\App\{{ $relationship['class'] }}::class, '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}');
     }
 
 @endif
@@ -14,7 +14,7 @@
     */
     public function {{ $relationship['name'] }}()
     {
-        return $this->hasMany({{ $relationship['class'] }}::class, '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}');
+        return $this->hasMany(\App\{{ $relationship['class'] }}::class, '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}');
     }
 
 @endif
@@ -24,7 +24,7 @@
     */
     public function {{ $relationship['name'] }}()
     {
-        return $this->belongsTo({{ $relationship['class'] }}::class, '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}');
+        return $this->belongsTo(\App\{{ $relationship['class'] }}::class, '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}');
     }
 
 @endif
@@ -35,16 +35,16 @@
     public function {{ $relationship['name'] }}()
     {
 @if (($relationship['timestamps'] == false) && (count($relationship['columns']) == 0))
-        return $this->belongsToMany({{ $relationship['class'] }}::class, '{{ $relationship['table'] }}', '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}');
+        return $this->belongsToMany(\App\{{ $relationship['class'] }}::class, '{{ $relationship['table'] }}', '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}');
 @elseif ($relationship['timestamps'] && (count($relationship['columns']) > 0))
-        return $this->belongsToMany({{ $relationship['class'] }}::class, '{{ $relationship['table'] }}', '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}')
+        return $this->belongsToMany(\App\{{ $relationship['class'] }}::class, '{{ $relationship['table'] }}', '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}')
             ->withTimestamps()
             ->withPivot('{!! implode("', '", $relationship['columns']) !!}');
 @elseif ($relationship['timestamps'])
-        return $this->belongsToMany({{ $relationship['class'] }}::class, '{{ $relationship['table'] }}', '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}')
+        return $this->belongsToMany(\App\{{ $relationship['class'] }}::class, '{{ $relationship['table'] }}', '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}')
             ->withTimestamps();
 @elseif (count($relationship['columns']) > 0)
-        return $this->belongsToMany({{ $relationship['class'] }}::class, '{{ $relationship['table'] }}', '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}')
+        return $this->belongsToMany(\App\{{ $relationship['class'] }}::class, '{{ $relationship['table'] }}', '{{ $relationship['foreign_key'] }}', '{{ $relationship['local_key'] }}')
             ->withPivot('{!! implode("', '", $relationship['columns']) !!}');
 @endif
     }
@@ -65,7 +65,7 @@
     */
     public function {{ $relationship['name'] }}()
     {
-        return $this->morphMany({{ $relationship['class'] }}::class, '{{ $relationship['relationship'] }}');
+        return $this->morphMany(\App\{{ $relationship['class'] }}::class, '{{ $relationship['relationship'] }}');
     }
 
 @endif
