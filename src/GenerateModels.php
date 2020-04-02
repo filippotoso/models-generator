@@ -319,7 +319,6 @@ class GenerateModels extends Command
         }
 
         return str_singular($table) . config('models-generator.polymorphic_suffix');
-
     }
 
     protected function buildPolymorphicRelationships()
@@ -481,7 +480,7 @@ class GenerateModels extends Command
 
                 if ($column->getNotnull()) {
                     if (!is_null($default)) {
-                        $results[$columnName] = $default;
+                        $results[$columnName] = ($default == 'NULL') ? null : $default;
                     } else {
                         $typeName = $column->getType()->getName();
                         if (in_array($typeName, [Type::STRING, Type::TEXT, Type::BINARY, Type::BLOB, Type::GUID])) {
@@ -495,7 +494,7 @@ class GenerateModels extends Command
                         }
                     }
                 } else {
-                    $results[$columnName] = $default;
+                    $results[$columnName] = ($default == 'NULL') ? null : $default;
                 }
             }
         } elseif ($type == 'dates') {
@@ -624,11 +623,9 @@ class GenerateModels extends Command
             } else {
                 $results[$columnName] = 'null';
             }
-
         }
 
         return $results;
-
     }
 
     protected function guessFromName($name, $size = null)
@@ -716,8 +713,6 @@ class GenerateModels extends Command
         }
 
         return false;
-
-
     }
 
     protected function getTextFaker($size)
@@ -889,7 +884,6 @@ class GenerateModels extends Command
         } else {
             $this->error(sprintf('Factory "%sFactory" already exists (and no "overwrite" parameter), skipping.', $class));
         }
-
     }
 
     protected function copyBaseModel()
