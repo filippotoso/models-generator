@@ -491,6 +491,8 @@ class GenerateModels extends Command
                             $results[$columnName] = '[]';
                         } elseif (in_array($typeName, [Type::BOOLEAN])) {
                             $results[$columnName] = false;
+                        } else {
+                            $results[$columnName] = ($default == 'NULL') ? null : $default;
                         }
                     }
                 } else {
