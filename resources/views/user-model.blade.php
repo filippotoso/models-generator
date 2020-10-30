@@ -1,5 +1,5 @@
 
-namespace App;
+namespace App\Models;
 
 use App\Models\Support\{{ $class }} as {{ $class }}Model;
 
