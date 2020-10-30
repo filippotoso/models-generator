@@ -413,7 +413,7 @@ class GenerateModels extends Command
     {
         $class = $this->getModelName($table);
 
-        $filename = app_path(sprintf('%s.php', $class));
+        $filename = app_path(sprintf('Models/%s.php', $class));
 
         if (!file_exists($filename)) {
             $params = [
@@ -822,7 +822,7 @@ class GenerateModels extends Command
     {
         $class = $this->getModelName($table);
 
-        $filename = app_path(sprintf('Models\%s.php', $class));
+        $filename = app_path(sprintf('Models/Support/%s.php', $class));
 
         if (!file_exists($filename) || in_array($this->overwrite, ['all', 'models'])) {
             $this->comment(sprintf('Generating model for "%s" table.', $table));
