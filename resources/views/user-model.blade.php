@@ -1,7 +1,7 @@
 
 namespace App;
 
-use App\Models\{{ $class }} as {{ $class }}Model;
+use App\Models\Support\{{ $class }} as {{ $class }}Model;
 
 class {{ $class }} extends {{ $class }}Model {
 

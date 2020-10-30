@@ -575,7 +575,7 @@ class GenerateModels extends Command
             }));
 
             if ($foreignKey) {
-                $results[$columnName] = 'App\\' . $this->getModelName($foreignKey->getForeignTableName());
+                $results[$columnName] = 'App\\Models\\' . $this->getModelName($foreignKey->getForeignTableName());
                 continue;
             }
 
@@ -585,14 +585,14 @@ class GenerateModels extends Command
             $idColumn = str_replace('able_type', 'able_id', $columnName);
 
             if (ends_with($columnName, 'able_type') && isset($columns[$idColumn])) {
-                $results[$columnName] = 'App\\User::class';
+                $results[$columnName] = 'App\\Models\\User::class';
                 continue;
             }
 
             $typeColumn = str_replace('able_id', 'able_type', $columnName);
 
             if (ends_with($columnName, 'able_id') && isset($columns[$typeColumn])) {
-                $results[$columnName] = 'App\\User';
+                $results[$columnName] = 'App\\Models\\User';
                 continue;
             }
 
@@ -890,7 +890,7 @@ class GenerateModels extends Command
 
     protected function copyBaseModel()
     {
-        $filename = app_path('Models/BaseModel.php');
+        $filename = app_path('Models/Support/BaseModel.php');
 
         if (!file_exists($filename)) {
             $dir = dirname($filename);
@@ -902,7 +902,7 @@ class GenerateModels extends Command
             copy(dirname(__DIR__) . '/resources/models/BaseModel.php', $filename);
             $this->info('BaseModel successfully copied!');
         } else {
-            $this->comment("The class App\Models\BaseModel already exists, don't overwrite.");
+            $this->comment("The class App\Models\Support\BaseModel already exists, don't overwrite.");
         }
     }
 

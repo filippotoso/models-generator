@@ -2,7 +2,7 @@
 namespace App\Models\Traits;
 
 @foreach ($uses as $use)
-use App\{{ $use }};
+use App\Models\{{ $use }};
 @endforeach
 
 trait UserRelationships  {

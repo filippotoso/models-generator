@@ -1,5 +1,5 @@
 
-namespace App\Models;
+namespace App\Models\Support;
 
 @if (isset($softDeletes) && $softDeletes)
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 @else
 @foreach ($uses as $use)
-use App\{{ $use }};
+use App\Models\{{ $use }};
 @endforeach
 
 @endif
