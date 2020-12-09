@@ -18,6 +18,7 @@ use Doctrine\DBAL\Types\JsonArrayType;
 use Doctrine\DBAL\Types\ObjectType;
 use Doctrine\DBAL\Types\BooleanType;
 use Doctrine\DBAL\Types\ArrayType;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\DBAL\Types\Type;
 use Illuminate\Database\Schema\Builder;
 
@@ -483,13 +484,13 @@ class GenerateModels extends Command
                         $results[$columnName] = ($default == 'NULL') ? null : $default;
                     } else {
                         $typeName = $column->getType()->getName();
-                        if (in_array($typeName, [Type::STRING, Type::TEXT, Type::BINARY, Type::BLOB, Type::GUID])) {
+                        if (in_array($typeName, [Types::STRING, Types::TEXT, Types::BINARY, Types::BLOB, Types::GUID])) {
                             $results[$columnName] = '';
-                        } elseif (in_array($typeName, [Type::BIGINT, Type::DECIMAL, Type::INTEGER, Type::FLOAT, Type::SMALLINT])) {
+                        } elseif (in_array($typeName, [Types::BIGINT, Types::DECIMAL, Types::INTEGER, Types::FLOAT, Types::SMALLINT])) {
                             $results[$columnName] = 0;
-                        } elseif (in_array($typeName, [Type::TARRAY, Type::SIMPLE_ARRAY, Type::JSON_ARRAY, Type::JSON])) {
+                        } elseif (in_array($typeName, [Types::ARRAY, Types::SIMPLE_ARRAY, Types::JSON])) {
                             $results[$columnName] = '[]';
-                        } elseif (in_array($typeName, [Type::BOOLEAN])) {
+                        } elseif (in_array($typeName, [Types::BOOLEAN])) {
                             $results[$columnName] = false;
                         } else {
                             $results[$columnName] = ($default == 'NULL') ? null : $default;
