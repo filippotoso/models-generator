@@ -46,7 +46,7 @@ return [
         | Laravel Documentation Example
         |--------------------------------------------------------------------------
         |
-        | 'users' => 'phones',
+        | 'users' => ['phones',],
         |
      */],
 
