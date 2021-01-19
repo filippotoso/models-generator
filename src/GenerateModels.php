@@ -204,26 +204,30 @@ class GenerateModels extends Command
     {
         $oneToOne = config('models-generator.one_to_one', []);
 
-        foreach ($oneToOne as $ownerTable => $ownedTable) {
-            $foreignKeys = array_where($this->foreignKeys[$ownedTable], function ($foreignKey) use ($ownerTable) {
-                return $foreignKey->getForeignTableName() == $ownerTable;
-            });
+        foreach ($oneToOne as $ownerTable => $ownedTables) {
+            $ownedTables = is_array($ownedTables) ? $ownedTables : [$ownedTables];
 
-            if (count($foreignKeys) != 1) {
-                continue;
+            foreach ($ownedTables as $ownedTable) {
+                $foreignKeys = array_where($this->foreignKeys[$ownedTable], function ($foreignKey) use ($ownerTable) {
+                    return $foreignKey->getForeignTableName() == $ownerTable;
+                });
+
+                if (count($foreignKeys) != 1) {
+                    continue;
+                }
+
+                $foreignKey = head($foreignKeys);
+
+                $remoteColumn = head($foreignKey->getLocalColumns());
+
+                $this->relationships[$ownerTable][] = [
+                    'type' => 'hasOne',
+                    'name' => camel_case(str_singular($ownedTable)),
+                    'class' => $this->getModelName($ownedTable),
+                    'foreign_key' => $remoteColumn,
+                    'local_key' => $this->primaryKeys[$ownerTable],
+                ];
             }
-
-            $foreignKey = head($foreignKeys);
-
-            $remoteColumn = head($foreignKey->getLocalColumns());
-
-            $this->relationships[$ownerTable][] = [
-                'type' => 'hasOne',
-                'name' => camel_case(str_singular($ownedTable)),
-                'class' => $this->getModelName($ownedTable),
-                'foreign_key' => $remoteColumn,
-                'local_key' => $this->primaryKeys[$ownerTable],
-            ];
         }
     }
 
