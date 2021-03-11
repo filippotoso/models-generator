@@ -222,7 +222,7 @@ class GenerateModels extends Command
 
                 $this->relationships[$ownerTable][] = [
                     'type' => 'hasOne',
-                    'name' => camel_case(str_singular($ownedTable)),
+                    'name' => camel_case($this->singular($ownedTable)),
                     'class' => $this->getModelName($ownedTable),
                     'foreign_key' => $remoteColumn,
                     'local_key' => $this->primaryKeys[$ownerTable],
@@ -241,7 +241,7 @@ class GenerateModels extends Command
 
         foreach ($tables as $table) {
             $foreignKeys = array_where($this->foreignKeys[$table], function ($foreignKey) use ($table) {
-                $foreignModel = str_singular($foreignKey->getForeignTableName());
+                $foreignModel = $this->singular($foreignKey->getForeignTableName());
 
                 if (ends_with($table, '_' . $foreignModel) || starts_with($table, $foreignModel . '_')) {
                     $localColumn = head($foreignKey->getLocalColumns());
@@ -323,7 +323,7 @@ class GenerateModels extends Command
             }
         }
 
-        return str_singular($table) . config('models-generator.polymorphic_suffix');
+        return $this->singular($table) . config('models-generator.polymorphic_suffix');
     }
 
     protected function buildPolymorphicRelationships()
@@ -385,7 +385,7 @@ class GenerateModels extends Command
 
                 $this->relationships[$table][] = [
                     'type' => 'belongsTo',
-                    'name' => camel_case(str_singular($localName)),
+                    'name' => camel_case($this->singular($localName)),
                     'class' => $this->getModelName($foreignTable),
                     'foreign_key' => $localColumn,
                     'local_key' => $this->primaryKeys[$table],
@@ -393,7 +393,7 @@ class GenerateModels extends Command
 
                 $name = $table;
 
-                if ($localName != str_singular($foreignTable)) {
+                if ($localName != $this->singular($foreignTable)) {
                     $name = $localName . '_' . $name;
                 }
 
@@ -814,7 +814,7 @@ class GenerateModels extends Command
      */
     protected function getModelName($table)
     {
-        return studly_case(str_singular($table));
+        return studly_case($this->singular($table));
     }
 
     /**
@@ -1021,5 +1021,10 @@ class GenerateModels extends Command
         }
 
         $this->info('Models successfully generated!');
+    }
+
+    protected function singular($string)
+    {
+        return str_singular($string);
     }
 }
