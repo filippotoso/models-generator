@@ -479,6 +479,8 @@ class GenerateModels extends Command
                         $column->getDefault(),
                         DB::connection($this->connection)->getDoctrineSchemaManager()->getDatabasePlatform()
                     );
+
+                    $default = is_string($default) ? preg_replace("#^'(.*)'$#si", '$1', $default) : $default;
                 } catch (\Exception $e) {
                     $default = null;
                 }
