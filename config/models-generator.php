@@ -117,4 +117,24 @@ return [
 
     'polymorphic_suffix' => 'able',
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Models mapping
+    |--------------------------------------------------------------------------
+    |
+    | Define a mapping between the table name and the model name.
+    | It's useful when working on legacy databases or databases with tables named in another language.  
+     */
+
+    'models' =>  [
+        /*
+        |--------------------------------------------------------------------------
+        | Example
+        |--------------------------------------------------------------------------
+        |
+        | 'users' => 'Utente',
+        |
+     */],
+
 ];

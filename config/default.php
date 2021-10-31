@@ -12,4 +12,5 @@ return [
 
     'polymorphic_suffix' => 'able',
 
+    'models' => [],
 ];

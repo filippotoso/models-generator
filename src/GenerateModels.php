@@ -816,7 +816,8 @@ class GenerateModels extends Command
      */
     protected function getModelName($table)
     {
-        return studly_case($this->singular($table));
+        $models = config('models-generator.models', []);
+        return $models[$table] ?? studly_case($this->singular($table));
     }
 
     /**
