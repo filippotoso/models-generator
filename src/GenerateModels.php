@@ -219,13 +219,14 @@ class GenerateModels extends Command
                 $foreignKey = head($foreignKeys);
 
                 $remoteColumn = head($foreignKey->getLocalColumns());
+                $foreignColumn = head($foreignKey->getForeignColumns());
 
                 $this->relationships[$ownerTable][] = [
                     'type' => 'hasOne',
                     'name' => camel_case($this->singular($ownedTable)),
                     'class' => $this->getModelName($ownedTable),
                     'foreign_key' => $remoteColumn,
-                    'local_key' => $this->primaryKeys[$ownerTable],
+                    'local_key' => $foreignColumn, // $this->primaryKeys[$ownerTable],
                 ];
             }
         }
@@ -379,6 +380,7 @@ class GenerateModels extends Command
 
             foreach ($currentForeignKeys as $foreignKey) {
                 $localColumn = head($foreignKey->getLocalColumns());
+                $foreignColumn = head($foreignKey->getForeignColumns());
                 $localName = ends_with($localColumn, '_id') ? substr($localColumn, 0, -3) : $localColumn;
 
                 $foreignTable = $foreignKey->getForeignTableName();
@@ -388,7 +390,7 @@ class GenerateModels extends Command
                     'name' => camel_case($this->singular($localName)),
                     'class' => $this->getModelName($foreignTable),
                     'foreign_key' => $localColumn,
-                    'local_key' => $this->primaryKeys[$table],
+                    'local_key' => $foreignColumn, // $this->primaryKeys[$table],
                 ];
 
                 $name = $table;
@@ -402,7 +404,7 @@ class GenerateModels extends Command
                     'name' => camel_case($name),
                     'class' => $this->getModelName($table),
                     'foreign_key' => $localColumn,
-                    'local_key' => $this->primaryKeys[$table],
+                    'local_key' => $foreignColumn, // $this->primaryKeys[$table],
                 ];
             }
         }
