@@ -231,9 +231,10 @@ class GenerateModels extends Command
             }
         }
     }
-    
-    protected function relationshipName($element, $table = null) {
-        return $this->singular($element)
+
+    protected function relationshipName($element, $table = null)
+    {
+        return $this->singular($element);
     }
 
     protected function buildManyToManyRelationships()
