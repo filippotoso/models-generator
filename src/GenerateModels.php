@@ -223,13 +223,17 @@ class GenerateModels extends Command
 
                 $this->relationships[$ownerTable][] = [
                     'type' => 'hasOne',
-                    'name' => camel_case($this->singular($ownedTable)),
+                    'name' => camel_case($this->relationshipName($ownedTable)),
                     'class' => $this->getModelName($ownedTable),
                     'foreign_key' => $remoteColumn,
                     'local_key' => $foreignColumn, // $this->primaryKeys[$ownerTable],
                 ];
             }
         }
+    }
+    
+    protected function relationshipName($element, $table = null) {
+        return $this->singular($element)
     }
 
     protected function buildManyToManyRelationships()
@@ -324,7 +328,7 @@ class GenerateModels extends Command
             }
         }
 
-        return $this->singular($table) . config('models-generator.polymorphic_suffix');
+        return $this->relationshipName($table) . config('models-generator.polymorphic_suffix');
     }
 
     protected function buildPolymorphicRelationships()
@@ -387,7 +391,7 @@ class GenerateModels extends Command
 
                 $this->relationships[$table][] = [
                     'type' => 'belongsTo',
-                    'name' => camel_case($this->singular($localName)),
+                    'name' => camel_case($this->relationshipName($localName, $foreignTable)),
                     'class' => $this->getModelName($foreignTable),
                     'foreign_key' => $localColumn,
                     'local_key' => $foreignColumn, // $this->primaryKeys[$table],
@@ -395,7 +399,7 @@ class GenerateModels extends Command
 
                 $name = $table;
 
-                if ($localName != $this->singular($foreignTable)) {
+                if ($localName != $this->relationshipName($foreignTable)) {
                     $name = $localName . '_' . $name;
                 }
 
