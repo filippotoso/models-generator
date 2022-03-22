@@ -372,6 +372,11 @@ class GenerateModels extends Command
     protected function buildRelationships()
     {
         foreach ($this->tables as $table) {
+
+            if (in_array($table, config('models-generator.exclude', []))) {
+                continue;
+            }
+
             $this->relationships[$table] = isset($this->relationships[$table]) ? $this->relationships[$table] : [];
 
             // Skip many to many tables
