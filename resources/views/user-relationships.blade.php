@@ -1,9 +1,5 @@
 
-namespace App\Models\Traits;
-
-@foreach ($uses as $use)
-use App\Models\{{ $use }};
-@endforeach
+namespace {!! $namespace !!}\Traits;
 
 trait UserRelationships  {
 

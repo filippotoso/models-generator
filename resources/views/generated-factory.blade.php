@@ -1,7 +1,7 @@
 
 use Faker\Generator as Faker;
 use Illuminate\Support\Str;
-use App\Models\{!! $model !!};
+use {!! $namespace !!}\{!! $model !!};
 
 $factory->define({!! $model !!}::class, function (Faker $faker) {
     return [

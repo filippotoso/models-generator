@@ -1,15 +1,8 @@
 
-namespace App\Models\Support;
+namespace {!! $namespace !!};
 
 @if (isset($softDeletes) && $softDeletes)
 use Illuminate\Database\Eloquent\SoftDeletes;
-@endif
-@if (empty($uses))
-
-@else
-@foreach ($uses as $use)
-use App\Models\{{ $use }};
-@endforeach
 
 @endif
 class {{ $class }} extends BaseModel {

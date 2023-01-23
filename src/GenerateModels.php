@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Str;
 
 use Doctrine\DBAL\Types\TimeType;
 use Doctrine\DBAL\Types\DateType;
@@ -25,6 +26,9 @@ use Illuminate\Database\Schema\Builder;
 class GenerateModels extends Command
 {
     protected const OPEN_ROW = '<' . '?php' . "\n\n";
+
+    protected const DEFAULT_MODELS_NAMESPACE = 'App\\Models';
+    protected const DEFAULT_SUPPORT_NAMESPACE = 'App\\Models\\Support';
 
     /**
      * The name and signature of the console command.
@@ -430,10 +434,15 @@ class GenerateModels extends Command
     {
         $class = $this->getModelName($table);
 
-        $filename = app_path(sprintf('Models/%s.php', $class));
+        $namespace = config('models-generator.namespaces.models', static::DEFAULT_MODELS_NAMESPACE);
+
+        $filename = app_path(sprintf($this->directory($namespace) . '/%s.php', $class));
 
         if (!file_exists($filename)) {
+
             $params = [
+                'supportNamespace' => config('models-generator.namespaces.support', static::DEFAULT_SUPPORT_NAMESPACE),
+                'namespace' => $namespace,
                 'class' => $class,
             ];
 
@@ -842,12 +851,16 @@ class GenerateModels extends Command
     {
         $class = $this->getModelName($table);
 
-        $filename = app_path(sprintf('Models/Support/%s.php', $class));
+        $namespace = config('models-generator.namespaces.support', static::DEFAULT_SUPPORT_NAMESPACE);
+
+        $filename = app_path(sprintf($this->directory($namespace) . '/%s.php', $class));
 
         if (!file_exists($filename) || in_array($this->overwrite, ['all', 'models'])) {
             $this->comment(sprintf('Generating model for "%s" table.', $table));
 
             $params = [
+                'namespace' => $namespace,
+                'modelsNamespace' => config('models-generator.namespaces.models', static::DEFAULT_MODELS_NAMESPACE),
                 'table' => $table,
                 'class' => $class,
                 'softDeletes' => $this->getSoftDeletes($table),
@@ -882,12 +895,15 @@ class GenerateModels extends Command
     {
         $class = $this->getModelName($table);
 
+        $namespace = config('models-generator.namespaces.models', static::DEFAULT_MODELS_NAMESPACE);
+
         $filename = database_path(sprintf('factories/%sFactory.php', $class));
 
         if (!file_exists($filename) || in_array($this->overwrite, ['all', 'factories'])) {
             $this->comment(sprintf('Generating factory for "%s" model.', $class));
 
             $params = [
+                'namespace' => $namespace,
                 'model' => $class,
                 'columns' => $this->getFactoryColumns($table),
             ];
@@ -908,19 +924,37 @@ class GenerateModels extends Command
         }
     }
 
-    protected function copyBaseModel()
+    protected function generateBaseModel()
     {
-        $filename = app_path('Models/Support/BaseModel.php');
+        $namespace = config('models-generator.namespaces.support', static::DEFAULT_SUPPORT_NAMESPACE);
+
+        $filename = app_path($this->directory($namespace) . '/BaseModel.php');
 
         if (!file_exists($filename)) {
             $dir = dirname($filename);
 
+
+            dd($dir);
+
             if (!is_dir($dir)) {
-                mkdir($dir);
+                mkdir($dir, 0777, true);
             }
 
-            copy(dirname(__DIR__) . '/resources/models/BaseModel.php', $filename);
-            $this->info('BaseModel successfully copied!');
+            $params = [
+                'namespace' => $namespace,
+            ];
+
+            $content = self::OPEN_ROW . View::make('models-generator::base-model', $params)->render();
+
+            $directory = dirname($filename);
+
+            if (!is_dir($directory)) {
+                mkdir($directory, 0777, true);
+            }
+
+            file_put_contents($filename, $content);
+
+            $this->info('BaseModel successfully generated!');
         } else {
             $this->comment("The class App\Models\Support\BaseModel already exists, don't overwrite.");
         }
@@ -928,16 +962,21 @@ class GenerateModels extends Command
 
     /**
      * Copy the base model into the App\Models namespace
-     * @method copyBaseModel
+     * @method generateUserRelationshipsTrait
      * @return void
      */
     protected function generateUserRelationshipsTrait()
     {
         if (isset($this->relationships['users'])) {
-            $filename = app_path('Models/Traits/UserRelationships.php');
+
+            $namespace = config('models-generator.namespaces.support', static::DEFAULT_SUPPORT_NAMESPACE);
+
+            $filename = app_path($this->directory($namespace) . '/Traits/UserRelationships.php');
 
             if (!file_exists($filename) || in_array($this->overwrite, ['all', 'models'])) {
                 $params = [
+                    'namespace' => $namespace,
+                    'modelsNamespace' => config('models-generator.namespaces.models', static::DEFAULT_MODELS_NAMESPACE),
                     'uses' => isset($this->uses['users']) ? $this->uses['users'] : [],
                     'relationships' => isset($this->relationships['users']) ? $this->relationships['users'] : [],
                 ];
@@ -957,6 +996,12 @@ class GenerateModels extends Command
                 $this->comment("The trait App\Models\Traits\UserRelationships already exists, don't overwrite.");
             }
         }
+    }
+
+    protected function directory($namespace)
+    {
+        $namespace = ($namespace == 'App') ? '' : $namespace;
+        return str_replace(['App\\', '\\'], ['', '/'], $namespace);
     }
 
     /**
@@ -1007,7 +1052,7 @@ class GenerateModels extends Command
             config('models-generator.exclude')
         );
 
-        $this->copyBaseModel();
+        $this->generateBaseModel();
 
         $this->generateUserRelationshipsTrait();
 
@@ -1040,6 +1085,6 @@ class GenerateModels extends Command
 
     protected function singular($string)
     {
-        return str_singular($string);
+        return Str::singular($string);
     }
 }
