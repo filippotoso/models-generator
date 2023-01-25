@@ -933,9 +933,6 @@ class GenerateModels extends Command
         if (!file_exists($filename)) {
             $dir = dirname($filename);
 
-
-            dd($dir);
-
             if (!is_dir($dir)) {
                 mkdir($dir, 0777, true);
             }
