@@ -117,6 +117,12 @@ class GenerateModels extends Command
     protected $uses = [];
 
     /**
+     * Table properties
+     * @var array
+     */
+    protected $properties = [];
+
+    /**
      * Create a new command instance.
      *
      * @return void
@@ -145,7 +151,6 @@ class GenerateModels extends Command
         return $results;
     }
 
-
     /**
      * Load the database information in local arrays
      * @method buildInternalData
@@ -161,6 +166,7 @@ class GenerateModels extends Command
         $this->primaryKeys = [];
         $this->relationships = [];
         $this->uses = [];
+        $this->properties = [];
 
         foreach ($this->tables as $table) {
             $this->columns[$table] = $this->normalizeColumns(DB::connection($this->connection)->getDoctrineSchemaManager()->listTableColumns($table));
@@ -168,6 +174,7 @@ class GenerateModels extends Command
             $this->foreignKeys[$table] = DB::connection($this->connection)->getDoctrineSchemaManager()->listTableForeignKeys($table);
             $this->primaryKeys[$table] = isset($this->indexes[$table]['primary']) ? head($this->indexes[$table]['primary']->getColumns()) : null;
             $this->relationships[$table] = [];
+            $this->properties[$table] = $this->properties($this->columns[$table]);
         }
 
         $this->buildManyToManyRelationships();
@@ -177,6 +184,13 @@ class GenerateModels extends Command
         $this->buildUses();
 
         $this->handleAliases();
+    }
+
+    protected function properties($columns)
+    {
+        return array_map(function ($column) {
+            return preg_replace('#_id$#si', '', $column);
+        }, array_keys($columns));
     }
 
     protected function buildUses()
@@ -830,6 +844,17 @@ class GenerateModels extends Command
     }
 
     /**
+     * Get the table properties
+     * @method getProperties
+     * @param  string        $table
+     * @return array
+     */
+    protected function getProperties($table)
+    {
+        return $this->properties[$table];
+    }
+
+    /**
      * Get the model name from the table name
      * @method getModelName
      * @param  string       $table
@@ -873,6 +898,7 @@ class GenerateModels extends Command
                 'casts' => $this->getTableColumns($table, 'casts'),
                 'relationships' => $this->getRelationships($table),
                 'uses' => $this->getUses($table),
+                'properties' => $this->getProperties($table),
             ];
 
             $content = self::OPEN_ROW . View::make('models-generator::generated-model', $params)->render();

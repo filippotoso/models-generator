@@ -5,6 +5,11 @@ namespace {!! $namespace !!};
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 @endif
+/**
+@foreach ($properties as $property)
+ * @property ${{ $property }}
+@endforeach
+ */
 class {{ $class }} extends BaseModel {
 
 @if (isset($softDeletes) && $softDeletes)
