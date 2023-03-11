@@ -541,33 +541,18 @@ class GenerateModels extends Command
                     $results[$columnName] = ($default == 'NULL') ? null : $default;
                 }
             }
-        } elseif ($type == 'dates') {
-            $dateTypes = [
-                TimeType::class,
-                DateType::class,
-                DateTimeType::class,
-                DateTimeTzType::class,
-                VarDateTimeType::class,
-            ];
-
-            foreach ($columns as $columnName => $column) {
-                if (in_array($columnName, $exclude)) {
-                    continue;
-                }
-
-                $type = get_class($column->getType());
-
-                if (in_array($type, $dateTypes)) {
-                    $results[] = $columnName;
-                }
-            }
         } elseif ($type == 'casts') {
             $types = [
                 JsonType::class => 'array',
                 JsonArrayType::class => 'array',
-                ObjectType::class => 'array',
-                ArrayType::class => 'array',
+                // ObjectType::class => 'array',
+                // ArrayType::class => 'array',
                 BooleanType::class => 'boolean',
+                TimeType::class => 'datetime',
+                DateType::class => 'datetime',
+                DateTimeType::class => 'datetime',
+                DateTimeTzType::class => 'datetime',
+                VarDateTimeType::class => 'datetime',
             ];
 
             foreach ($columns as $columnName => $column) {
@@ -894,7 +879,6 @@ class GenerateModels extends Command
                 'incrementing' => $this->getIncrementing($table),
                 'fillable' => $this->getTableColumns($table, 'fillable'),
                 'attributes' => $this->getTableColumns($table, 'attributes'),
-                'dates' => $this->getTableColumns($table, 'dates'),
                 'casts' => $this->getTableColumns($table, 'casts'),
                 'relationships' => $this->getRelationships($table),
                 'uses' => $this->getUses($table),

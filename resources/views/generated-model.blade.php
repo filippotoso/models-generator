@@ -70,17 +70,6 @@ class {{ $class }} extends BaseModel {
     protected $casts = @exportModelProperty($casts)
 
 @endif
-@if (isset($dates) && is_array($dates) && !empty($dates))
-    /**
-    * The attributes that should be mutated to dates.
-    *
-    * @var array
-    */
-    protected $dates = [
-        '{!! implode("', '", $dates) !!}',
-    ];
-
-@endif
 @if (isset($timestamps) && !$timestamps)
     /**
     * Indicates if the model should be timestamped.
