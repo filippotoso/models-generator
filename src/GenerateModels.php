@@ -22,6 +22,7 @@ use Doctrine\DBAL\Types\ArrayType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\DBAL\Types\Type;
 use Illuminate\Database\Schema\Builder;
+use Illuminate\Support\Facades\Schema;
 
 class GenerateModels extends Command
 {
@@ -143,9 +144,9 @@ class GenerateModels extends Command
     {
         $results = [];
 
-        foreach ($columns as $column => $data) {
-            $column = str_replace('`', '', $column);
-            $results[$column] = $data;
+        foreach ($columns as $data) {
+            $data['name'] = str_replace('`', '', $data['name']);
+            $results[$data['name']] = $data;
         }
 
         return $results;
@@ -158,7 +159,7 @@ class GenerateModels extends Command
      */
     protected function buildInternalData()
     {
-        $this->tables = DB::connection($this->connection)->getDoctrineSchemaManager()->listTableNames();
+        $this->tables = Schema::connection($this->connection)->getTableListing();
 
         $this->columns = [];
         $this->indexes = [];
@@ -169,9 +170,9 @@ class GenerateModels extends Command
         $this->properties = [];
 
         foreach ($this->tables as $table) {
-            $this->columns[$table] = $this->normalizeColumns(DB::connection($this->connection)->getDoctrineSchemaManager()->listTableColumns($table));
-            $this->indexes[$table] = DB::connection($this->connection)->getDoctrineSchemaManager()->listTableIndexes($table);
-            $this->foreignKeys[$table] = DB::connection($this->connection)->getDoctrineSchemaManager()->listTableForeignKeys($table);
+            $this->columns[$table] = $this->normalizeColumns(Schema::connection($this->connection)->getColumns($table));
+            $this->indexes[$table] = Schema::connection($this->connection)->getIndexes($table);
+            $this->foreignKeys[$table] = Schema::connection($this->connection)->getForeignKeys($table);
             $this->primaryKeys[$table] = isset($this->indexes[$table]['primary']) ? head($this->indexes[$table]['primary']->getColumns()) : null;
             $this->relationships[$table] = [];
             $this->properties[$table] = $this->properties($this->columns[$table]);
@@ -188,9 +189,7 @@ class GenerateModels extends Command
 
     protected function properties($columns)
     {
-        return array_map(function ($column) {
-            return preg_replace('#_id$#si', '', $column);
-        }, array_keys($columns));
+        return array_keys($columns);
     }
 
     protected function buildUses()
@@ -227,7 +226,7 @@ class GenerateModels extends Command
 
             foreach ($ownedTables as $ownedTable) {
                 $foreignKeys = array_where($this->foreignKeys[$ownedTable], function ($foreignKey) use ($ownerTable) {
-                    return $foreignKey->getForeignTableName() == $ownerTable;
+                    return $foreignKey['foreign_table'] == $ownerTable;
                 });
 
                 if (count($foreignKeys) != 1) {
@@ -236,8 +235,8 @@ class GenerateModels extends Command
 
                 $foreignKey = head($foreignKeys);
 
-                $remoteColumn = head($foreignKey->getLocalColumns());
-                $foreignColumn = head($foreignKey->getForeignColumns());
+                $remoteColumn = head($foreignKey['columns']);
+                $foreignColumn = head($foreignKey['foreign_columns']);
 
                 $this->relationships[$ownerTable][] = [
                     'type' => 'hasOne',
@@ -265,10 +264,10 @@ class GenerateModels extends Command
 
         foreach ($tables as $table) {
             $foreignKeys = array_where($this->foreignKeys[$table], function ($foreignKey) use ($table) {
-                $foreignModel = $this->singular($foreignKey->getForeignTableName());
+                $foreignModel = $this->singular($foreignKey['foreign_table']);
 
                 if (ends_with($table, '_' . $foreignModel) || starts_with($table, $foreignModel . '_')) {
-                    $localColumn = head($foreignKey->getLocalColumns());
+                    $localColumn = head($foreignKey['columns']);
 
                     if (ends_with($localColumn, '_id')) {
                         $potentialRemoteModel = substr($localColumn, 0, -3);
@@ -293,25 +292,25 @@ class GenerateModels extends Command
 
             $columns = array_diff(
                 array_keys($this->columns[$table]),
-                [$this->primaryKeys[$table], head($leftForeignKey->getLocalColumns()), head($rightForeignKey->getLocalColumns()), 'created_at', 'updated_at', 'deleted_at']
+                [$this->primaryKeys[$table], head($leftForeignKey['columns']), head($rightForeignKey['columns']), 'created_at', 'updated_at', 'deleted_at']
             );
 
             $this->manyToMany[$table][] = [
-                'table' => $leftForeignKey->getForeignTableName(),
+                'table' => $leftForeignKey['foreign_table'],
                 'timestamps' => $this->getTimestamps($table),
                 'columns' => $columns,
-                'remote_table' => $rightForeignKey->getForeignTableName(),
-                'foreign_key' => head($leftForeignKey->getLocalColumns()),
-                'local_key' => head($rightForeignKey->getLocalColumns()),
+                'remote_table' => $rightForeignKey['foreign_table'],
+                'foreign_key' => head($leftForeignKey['columns']),
+                'local_key' => head($rightForeignKey['columns']),
             ];
 
             $this->manyToMany[$table][] = [
-                'table' => $rightForeignKey->getForeignTableName(),
+                'table' => $rightForeignKey['foreign_table'],
                 'timestamps' => $this->getTimestamps($table),
                 'columns' => $columns,
-                'remote_table' => $leftForeignKey->getForeignTableName(),
-                'foreign_key' => head($rightForeignKey->getLocalColumns()),
-                'local_key' => head($leftForeignKey->getLocalColumns()),
+                'remote_table' => $leftForeignKey['foreign_table'],
+                'foreign_key' => head($rightForeignKey['columns']),
+                'local_key' => head($leftForeignKey['columns']),
             ];
         }
 
@@ -407,11 +406,11 @@ class GenerateModels extends Command
             $currentForeignKeys = $this->foreignKeys[$table];
 
             foreach ($currentForeignKeys as $foreignKey) {
-                $localColumn = head($foreignKey->getLocalColumns());
-                $foreignColumn = head($foreignKey->getForeignColumns());
+                $localColumn = head($foreignKey['columns']);
+                $foreignColumn = head($foreignKey['foreign_columns']);
                 $localName = ends_with($localColumn, '_id') ? substr($localColumn, 0, -3) : $localColumn;
 
-                $foreignTable = $foreignKey->getForeignTableName();
+                $foreignTable = $foreignKey['foreign_table'];
 
                 $this->relationships[$table][] = [
                     'type' => 'belongsTo',
@@ -487,7 +486,7 @@ class GenerateModels extends Command
         $columnsNames = array_keys($columns);
 
         $indexes = $this->indexes[$table];
-        $primary = isset($indexes['primary']) ? head($indexes['primary']->getColumns()) : null;
+        $primary = isset($indexes['primary']) ? head($indexes['primary']['columns']) : null;
 
         $exclude = [
             'created_at', 'updated_at', 'deleted_at',
@@ -509,22 +508,13 @@ class GenerateModels extends Command
                     continue;
                 }
 
-                try {
-                    $default = $column->getType()->convertToPHPValue(
-                        $column->getDefault(),
-                        DB::connection($this->connection)->getDoctrineSchemaManager()->getDatabasePlatform()
-                    );
+                $default = is_string($column['default']) ? preg_replace("#^'(.*)'$#si", '$1', $column['default']) : $column['default'];
 
-                    $default = is_string($default) ? preg_replace("#^'(.*)'$#si", '$1', $default) : $default;
-                } catch (\Exception $e) {
-                    $default = null;
-                }
-
-                if ($column->getNotnull()) {
+                if ($column['nullable']) {
                     if (!is_null($default)) {
                         $results[$columnName] = ($default == 'NULL') ? null : $default;
                     } else {
-                        $typeName = $column->getType()->getName();
+                        $typeName = $column['type_name'];
                         if (in_array($typeName, [Types::STRING, Types::TEXT, Types::BINARY, Types::BLOB, Types::GUID])) {
                             $results[$columnName] = '';
                         } elseif (in_array($typeName, [Types::BIGINT, Types::DECIMAL, Types::INTEGER, Types::FLOAT, Types::SMALLINT])) {
@@ -560,11 +550,7 @@ class GenerateModels extends Command
                     continue;
                 }
 
-                $type = get_class($column->getType());
-
-                if (isset($types[$type])) {
-                    $results[$columnName] = $types[$type];
-                }
+                $results[$columnName] = $column['type_name'];
             }
         }
 
@@ -598,11 +584,11 @@ class GenerateModels extends Command
             // Relationships
 
             $foreignKey = current(array_filter($this->foreignKeys[$table], function ($foreignKey) use ($columnName) {
-                return in_array($columnName, $foreignKey->getLocalColumns());
+                return in_array($columnName, $foreignKey['columns']);
             }));
 
             if ($foreignKey) {
-                $results[$columnName] = 'App\\Models\\' . $this->getModelName($foreignKey->getForeignTableName());
+                $results[$columnName] = 'App\\Models\\' . $this->getModelName($foreignKey['foreign_table']);
                 continue;
             }
 
@@ -836,7 +822,15 @@ class GenerateModels extends Command
      */
     protected function getProperties($table)
     {
-        return $this->properties[$table];
+        $relationships = array_map(function ($relationship) {
+            return $relationship['name'];
+        }, $this->relationships[$table]);
+
+        $properties = array_merge($relationships, $this->properties[$table]);
+
+        sort($properties);
+
+        return $properties;
     }
 
     /**
@@ -1045,9 +1039,6 @@ class GenerateModels extends Command
 
         $this->connection = $this->option('connection') == 'default' ? null : $this->option('connection');
 
-        // DBAL enum bug workaround
-        DB::connection($this->connection)->getDoctrineSchemaManager()->getDatabasePlatform()->registerDoctrineTypeMapping('enum', 'string');
-
         $this->buildInternalData();
 
         $this->extendBlade();
@@ -1055,7 +1046,7 @@ class GenerateModels extends Command
         $this->info('Models generation started.');
 
         $tables = array_diff(
-            DB::connection($this->connection)->getDoctrineSchemaManager()->listTableNames(),
+            Schema::connection($this->connection)->getTableListing(),
             config('models-generator.exclude')
         );
 
