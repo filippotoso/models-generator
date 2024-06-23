@@ -37,8 +37,7 @@ class GenerateModels extends Command
      * @var string
      */
     protected $signature = 'generate:models
-                            {--overwrite= : Overwrite already generated models. Available options: all, models, factories}
-                            {--factories : Specify if the generator has to create database factories too}
+                            {--overwrite : Overwrite already generated models}
                             {--connection=default : Which connection use}';
 
     /**
@@ -61,13 +60,6 @@ class GenerateModels extends Command
      * @var boolean
      */
     protected $overwrite = false;
-
-    /**
-     * Specify if the generator has to create database factories too
-     *
-     * @var boolean
-     */
-    protected $factories = false;
 
     /**
      * Database tables
@@ -173,7 +165,7 @@ class GenerateModels extends Command
             $this->columns[$table] = $this->normalizeColumns(Schema::connection($this->connection)->getColumns($table));
             $this->indexes[$table] = Schema::connection($this->connection)->getIndexes($table);
             $this->foreignKeys[$table] = Schema::connection($this->connection)->getForeignKeys($table);
-            $this->primaryKeys[$table] = isset($this->indexes[$table]['primary']) ? head($this->indexes[$table]['primary']->getColumns()) : null;
+            $this->primaryKeys[$table] = $this->primaryKey($table);
             $this->relationships[$table] = [];
             $this->properties[$table] = $this->properties($this->columns[$table]);
         }
@@ -185,6 +177,13 @@ class GenerateModels extends Command
         $this->buildUses();
 
         $this->handleAliases();
+    }
+
+    protected function primaryKey($table)
+    {
+        return head(array_filter($this->indexes[$table], function ($index) {
+            return $index['primary'] ?? false;
+        })[0]['columns'] ?? []) ?: null;
     }
 
     protected function properties($columns)
@@ -485,8 +484,7 @@ class GenerateModels extends Command
         $columns = $this->columns[$table];
         $columnsNames = array_keys($columns);
 
-        $indexes = $this->indexes[$table];
-        $primary = isset($indexes['primary']) ? head($indexes['primary']['columns']) : null;
+        $primary = $this->primaryKey($table);
 
         $exclude = [
             'created_at', 'updated_at', 'deleted_at',
@@ -508,135 +506,38 @@ class GenerateModels extends Command
                     continue;
                 }
 
-                $default = is_string($column['default']) ? preg_replace("#^'(.*)'$#si", '$1', $column['default']) : $column['default'];
+                $default = $column['default'];
 
-                if ($column['nullable']) {
-                    if (!is_null($default)) {
-                        $results[$columnName] = ($default == 'NULL') ? null : $default;
-                    } else {
-                        $typeName = $column['type_name'];
-                        if (in_array($typeName, [Types::STRING, Types::TEXT, Types::BINARY, Types::BLOB, Types::GUID])) {
-                            $results[$columnName] = '';
-                        } elseif (in_array($typeName, [Types::BIGINT, Types::DECIMAL, Types::INTEGER, Types::FLOAT, Types::SMALLINT])) {
-                            $results[$columnName] = 0;
-                        } elseif (in_array($typeName, [Types::ARRAY, Types::SIMPLE_ARRAY, Types::JSON])) {
-                            $results[$columnName] = '[]';
-                        } elseif (in_array($typeName, [Types::BOOLEAN])) {
-                            $results[$columnName] = false;
-                        } else {
-                            $results[$columnName] = ($default == 'NULL') ? null : $default;
-                        }
+                $results[$columnName] = ($default === 'NULL') ? null : $default;
+
+                if (!$column['nullable']) {
+                    $typeName = $column['type_name'];
+                    if (in_array($typeName, ['char ', 'varchar', 'binary', 'varbinary', 'enum', 'set', 'tinyblob', 'blob', 'mediumblob', 'longblob', 'tinytext', 'text', 'mediumtext', 'longtext'])) {
+                        $results[$columnName] = '';
+                    } elseif (in_array($typeName, ['integer', 'int', 'smallint', 'tinyint', 'mediumint', 'bigint', 'decimal', 'numeric', 'float', 'double', 'bit'])) {
+                        $results[$columnName] = 0;
+                    } elseif (in_array($typeName, ['json'])) {
+                        $results[$columnName] = '[]';
+                    } elseif (in_array($typeName, ['boolean'])) {
+                        $results[$columnName] = false;
                     }
-                } else {
-                    $results[$columnName] = ($default == 'NULL') ? null : $default;
                 }
             }
         } elseif ($type == 'casts') {
-            $types = [
-                JsonType::class => 'array',
-                JsonArrayType::class => 'array',
-                // ObjectType::class => 'array',
-                // ArrayType::class => 'array',
-                BooleanType::class => 'boolean',
-                TimeType::class => 'datetime',
-                DateType::class => 'datetime',
-                DateTimeType::class => 'datetime',
-                DateTimeTzType::class => 'datetime',
-                VarDateTimeType::class => 'datetime',
-            ];
-
             foreach ($columns as $columnName => $column) {
                 if (in_array($columnName, $exclude)) {
                     continue;
                 }
 
-                $results[$columnName] = $column['type_name'];
-            }
-        }
+                $columnType = $column['type_name'];
 
-        return $results;
-    }
-
-
-    protected function getFactoryColumns($table)
-    {
-        $results = [];
-
-        $columns = $this->columns[$table];
-        $columnsNames = array_keys($columns);
-
-        $indexes = $this->indexes[$table];
-        $primary = isset($indexes['primary']) ? head($indexes['primary']->getColumns()) : null;
-
-        $exclude = [
-            'created_at', 'updated_at', 'deleted_at',
-        ];
-
-        if (!is_null($primary)) {
-            $exclude[] = $primary;
-        }
-
-        foreach ($columns as $columnName => $column) {
-            if (in_array($columnName, $exclude)) {
-                continue;
-            }
-
-            // Relationships
-
-            $foreignKey = current(array_filter($this->foreignKeys[$table], function ($foreignKey) use ($columnName) {
-                return in_array($columnName, $foreignKey['columns']);
-            }));
-
-            if ($foreignKey) {
-                $results[$columnName] = 'App\\Models\\' . $this->getModelName($foreignKey['foreign_table']);
-                continue;
-            }
-
-            // Polimorphic Relationships
-
-            // Skip the type column
-            $idColumn = str_replace('able_type', 'able_id', $columnName);
-
-            if (ends_with($columnName, 'able_type') && isset($columns[$idColumn])) {
-                $results[$columnName] = 'App\\Models\\User::class';
-                continue;
-            }
-
-            $typeColumn = str_replace('able_id', 'able_type', $columnName);
-
-            if (ends_with($columnName, 'able_id') && isset($columns[$typeColumn])) {
-                $results[$columnName] = 'App\\Models\\User';
-                continue;
-            }
-
-            $typeName = $column->getType()->getName();
-
-            $columnSize = $column->getLength();
-
-            if ($guessed = $this->guessFromName($columnName, $columnSize)) {
-                $results[$columnName] = $guessed;
-            } elseif ($typeName == Type::STRING) {
-                $results[$columnName] = $this->getTextFaker($columnSize);
-            } elseif ($typeName == Type::TEXT) {
-                $results[$columnName] = '$faker->paragraph(10)';
-            } elseif ($typeName == Type::SMALLINT) {
-                $results[$columnName] = '$faker->numberBetween(0, 255)';
-            } elseif (in_array($typeName, [Type::BIGINT, Type::INTEGER])) {
-                $results[$columnName] = '$faker->randomNumber()';
-            } elseif (in_array($typeName, [Type::DECIMAL, Type::FLOAT])) {
-                $results[$columnName] = '$faker->randomFloat()';
-            } elseif (in_array($typeName, [Type::BOOLEAN])) {
-                $results[$columnName] = '$faker->boolean()';
-            } elseif (in_array($typeName, [Type::DATE, Type::DATE_IMMUTABLE])) {
-                $results[$columnName] = '$faker->date()';
-            } elseif (in_array($typeName, [Type::DATETIME, Type::DATETIMETZ, Type::DATETIME_IMMUTABLE, Type::DATETIMETZ_IMMUTABLE])) {
-                $results[$columnName] = '$faker->dateTime()';
-            } elseif (in_array($typeName, [Type::TIME, Type::TIME_IMMUTABLE])) {
-                $results[$columnName] = '$faker->time()';
-            } elseif ($column->getNotnull()) {
-                $results[$columnName] = "null, // INVALID BUT DON'T KNOW WHAT TO DO!";
-            } else {
-                $results[$columnName] = 'null';
+                if ($columnType == 'json') {
+                    $results[$columnName] = 'array';
+                } elseif (in_array($columnType, ['date', 'time', 'datetime', 'timestamp '])) {
+                    $results[$columnName] = 'datetime';
+                } elseif (in_array($columnType, ['tinyint'])) {
+                    $results[$columnName] = 'boolean';
+                }
             }
         }
 
@@ -781,11 +682,11 @@ class GenerateModels extends Command
     {
         $indexes = $this->indexes[$table];
 
-        $primary = isset($indexes['primary']) ? head($indexes['primary']->getColumns()) : null;
+        $primary = $this->primaryKey($table);
 
         if (!is_null($primary)) {
             if (isset($this->columns[$table][$primary])) {
-                return $this->columns[$table][$primary]->getAutoincrement();
+                return $this->columns[$table][$primary]['auto_increment'] ?? false;
             }
         }
 
@@ -859,7 +760,7 @@ class GenerateModels extends Command
 
         $filename = app_path(sprintf($this->directory($namespace) . '/%s.php', $class));
 
-        if (!file_exists($filename) || in_array($this->overwrite, ['all', 'models'])) {
+        if (!file_exists($filename) || $this->overwrite) {
             $this->comment(sprintf('Generating model for "%s" table.', $table));
 
             $params = [
@@ -892,39 +793,6 @@ class GenerateModels extends Command
             $this->info(sprintf('Model "%s" successfully generated!', $class));
         } else {
             $this->error(sprintf('Model "%s" already exists (and no overwrite requested), skipping.', $class));
-        }
-    }
-
-    protected function generateFactory($table)
-    {
-        $class = $this->getModelName($table);
-
-        $namespace = config('models-generator.namespaces.models', static::DEFAULT_MODELS_NAMESPACE);
-
-        $filename = database_path(sprintf('factories/%sFactory.php', $class));
-
-        if (!file_exists($filename) || in_array($this->overwrite, ['all', 'factories'])) {
-            $this->comment(sprintf('Generating factory for "%s" model.', $class));
-
-            $params = [
-                'namespace' => $namespace,
-                'model' => $class,
-                'columns' => $this->getFactoryColumns($table),
-            ];
-
-            $content = self::OPEN_ROW . View::make('models-generator::generated-factory', $params)->render();
-
-            $directory = dirname($filename);
-
-            if (!is_dir($directory)) {
-                mkdir($directory, 0777, true);
-            }
-
-            file_put_contents($filename, $content);
-
-            $this->info(sprintf('Factory "%sFactory" successfully generated!', $class));
-        } else {
-            $this->error(sprintf('Factory "%sFactory" already exists (and no "overwrite" parameter), skipping.', $class));
         }
     }
 
@@ -974,7 +842,7 @@ class GenerateModels extends Command
 
             $filename = app_path($this->directory($namespace) . '/Traits/UserRelationships.php');
 
-            if (!file_exists($filename) || in_array($this->overwrite, ['all', 'models'])) {
+            if (!file_exists($filename) || $this->overwrite) {
                 $params = [
                     'namespace' => $namespace,
                     'modelsNamespace' => config('models-generator.namespaces.models', static::DEFAULT_MODELS_NAMESPACE),
@@ -1034,8 +902,7 @@ class GenerateModels extends Command
      */
     public function handle()
     {
-        $this->overwrite = $this->option('overwrite');
-        $this->factories = $this->option('factories');
+        $this->overwrite = (bool)$this->option('overwrite');
 
         $this->connection = $this->option('connection') == 'default' ? null : $this->option('connection');
 
@@ -1071,10 +938,6 @@ class GenerateModels extends Command
             // Skip many to many tables
             if (isset($this->manyToMany[$table])) {
                 continue;
-            }
-
-            if ($this->factories) {
-                $this->generateFactory($table);
             }
         }
 

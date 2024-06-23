@@ -37,6 +37,8 @@ return [
         // Laratrust package
         'roles', 'permissions', 'teams', 'role_user', 'permission_role', 'permission_user',
 
+        'operations',
+
     ],
 
     /*
