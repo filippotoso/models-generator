@@ -3,25 +3,10 @@
 namespace FilippoToso\ModelsGenerator;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\View;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Str;
 
-use Doctrine\DBAL\Types\TimeType;
-use Doctrine\DBAL\Types\DateType;
-use Doctrine\DBAL\Types\DateTimeType;
-use Doctrine\DBAL\Types\DateTimeTzType;
-use Doctrine\DBAL\Types\VarDateTimeType;
-use Doctrine\DBAL\Types\JsonType;
-use Doctrine\DBAL\Types\JsonArrayType;
-use Doctrine\DBAL\Types\ObjectType;
-use Doctrine\DBAL\Types\BooleanType;
-use Doctrine\DBAL\Types\ArrayType;
-use Doctrine\DBAL\Types\Types;
-use Doctrine\DBAL\Types\Type;
-use Illuminate\Database\Schema\Builder;
 use Illuminate\Support\Facades\Schema;
 
 class GenerateModels extends Command
@@ -183,7 +168,7 @@ class GenerateModels extends Command
     {
         return head(array_filter($this->indexes[$table], function ($index) {
             return $index['primary'] ?? false;
-        })[0]['columns'] ?? []) ?: null;
+        }))['columns'][0] ?? null;
     }
 
     protected function properties($columns)
@@ -685,17 +670,9 @@ class GenerateModels extends Command
      */
     protected function getIncrementing($table)
     {
-        $indexes = $this->indexes[$table];
-
         $primary = $this->primaryKey($table);
 
-        if (!is_null($primary)) {
-            if (isset($this->columns[$table][$primary])) {
-                return $this->columns[$table][$primary]['auto_increment'] ?? false;
-            }
-        }
-
-        return false;
+        return $this->columns[$table][$primary]['auto_increment'] ?? false;
     }
 
     /**
