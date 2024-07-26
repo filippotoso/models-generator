@@ -491,11 +491,12 @@ class GenerateModels extends Command
                     continue;
                 }
 
+
                 $typeName = $column['type_name'];
 
                 $default = is_string($column['default']) ? trim($column['default'], "'") : $column['default'];
 
-                if (!is_null($column['default']) && in_array($typeName, ['integer', 'int', 'smallint', 'tinyint', 'mediumint', 'bigint', 'decimal', 'numeric', 'float', 'double', 'bit'])) {
+                if (($column['default'] !== 'NULL') && in_array($typeName, ['integer', 'int', 'smallint', 'tinyint', 'mediumint', 'bigint', 'decimal', 'numeric', 'float', 'double', 'bit'])) {
                     $default = (int) $default;
                 }
 
