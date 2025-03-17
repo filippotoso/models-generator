@@ -23,7 +23,8 @@ class GenerateModels extends Command
      */
     protected $signature = 'generate:models
                             {--overwrite : Overwrite already generated models}
-                            {--connection=default : Which connection use}';
+                            {--connection=default : Which connection use}
+                            {--schema=default : Which schema use}';
 
     /**
      * The console command description.
@@ -38,6 +39,13 @@ class GenerateModels extends Command
      * @var string|null
      */
     protected $connection = null;
+
+    /**
+     * Specify the schema to be used
+     *
+     * @var string|null
+     */
+    protected $schema = null;
 
     /**
      * Specify if overwrite existing generated models
@@ -136,7 +144,7 @@ class GenerateModels extends Command
      */
     protected function buildInternalData()
     {
-        $this->tables = Schema::connection($this->connection)->getTableListing();
+        $this->tables = Schema::connection($this->connection)->getTableListing($this->schema);
 
         $this->columns = [];
         $this->indexes = [];
@@ -147,6 +155,7 @@ class GenerateModels extends Command
         $this->properties = [];
 
         foreach ($this->tables as $table) {
+
             $this->columns[$table] = $this->normalizeColumns(Schema::connection($this->connection)->getColumns($table));
             $this->indexes[$table] = Schema::connection($this->connection)->getIndexes($table);
             $this->foreignKeys[$table] = Schema::connection($this->connection)->getForeignKeys($table);
@@ -472,7 +481,9 @@ class GenerateModels extends Command
         $primary = $this->primaryKey($table);
 
         $exclude = [
-            'created_at', 'updated_at', 'deleted_at',
+            'created_at',
+            'updated_at',
+            'deleted_at',
         ];
 
         if ($type == 'fillable') {
@@ -889,6 +900,8 @@ class GenerateModels extends Command
 
         $this->connection = $this->option('connection') == 'default' ? null : $this->option('connection');
 
+        $this->schema = $this->option('schema') == 'default' ? null : $this->option('schema');
+
         $this->buildInternalData();
 
         $this->extendBlade();
@@ -896,7 +909,7 @@ class GenerateModels extends Command
         $this->info('Models generation started.');
 
         $tables = array_diff(
-            Schema::connection($this->connection)->getTableListing(),
+            Schema::connection($this->connection)->getTableListing($this->schema),
             config('models-generator.exclude')
         );
 
