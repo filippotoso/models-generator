@@ -144,7 +144,7 @@ class GenerateModels extends Command
      */
     protected function buildInternalData()
     {
-        $this->tables = Schema::connection($this->connection)->getTableListing($this->schema);
+        $this->tables = Schema::connection($this->connection)->getTableListing($this->schema, false);
 
         $this->columns = [];
         $this->indexes = [];
@@ -325,7 +325,6 @@ class GenerateModels extends Command
 
     protected function getPolimorphicRelationshipName($table)
     {
-
         $columns = $this->columns[$table];
 
         foreach ($columns as $columnName => $column) {
@@ -393,8 +392,6 @@ class GenerateModels extends Command
             if (isset($this->manyToMany[$table])) {
                 continue;
             }
-
-            $relationships = [];
 
             $currentForeignKeys = $this->foreignKeys[$table];
 
@@ -909,7 +906,7 @@ class GenerateModels extends Command
         $this->info('Models generation started.');
 
         $tables = array_diff(
-            Schema::connection($this->connection)->getTableListing($this->schema),
+            Schema::connection($this->connection)->getTableListing($this->schema, false),
             config('models-generator.exclude')
         );
 
